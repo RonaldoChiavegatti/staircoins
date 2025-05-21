@@ -119,7 +119,7 @@ class ProfessorProdutosScreen extends StatelessWidget {
                               child: Container(
                                 width: double.infinity,
                                 color: AppTheme.mutedColor,
-                                child: Center(
+                                child: const Center(
                                   child: Icon(
                                     Icons.image_outlined,
                                     size: 48,

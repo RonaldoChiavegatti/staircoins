@@ -54,11 +54,11 @@ class TurmaProvider with ChangeNotifier {
 
   List<Turma> getMinhasTurmas() {
     if (_user == null) return [];
-    return _turmas.where((turma) => _user!.turmas.contains(turma.id)).toList();
+    return _turmas.where((turma) => _user.turmas.contains(turma.id)).toList();
   }
 
   Future<void> adicionarTurma(String nome, String descricao, String codigo) async {
-    if (_user == null || _user!.type != UserType.professor) {
+    if (_user == null || _user.type != UserType.professor) {
       throw Exception('Apenas professores podem criar turmas');
     }
 
@@ -80,7 +80,7 @@ class TurmaProvider with ChangeNotifier {
         nome: nome,
         descricao: descricao,
         codigo: codigo,
-        professorId: _user!.id,
+        professorId: _user.id,
         alunos: [],
       );
 
@@ -98,7 +98,7 @@ class TurmaProvider with ChangeNotifier {
   }
 
   Future<void> entrarTurma(String codigo) async {
-    if (_user == null || _user!.type != UserType.aluno) {
+    if (_user == null || _user.type != UserType.aluno) {
       throw Exception('Apenas alunos podem entrar em turmas');
     }
 
@@ -118,13 +118,13 @@ class TurmaProvider with ChangeNotifier {
       final turma = _turmas[turmaIndex];
 
       // Verifica se o aluno já está na turma
-      if (turma.alunos.contains(_user!.id)) {
+      if (turma.alunos.contains(_user.id)) {
         throw Exception('Você já está nesta turma');
       }
 
       // Adiciona o aluno à turma
       final updatedTurma = turma.copyWith(
-        alunos: [...turma.alunos, _user!.id],
+        alunos: [...turma.alunos, _user.id],
       );
 
       _turmas[turmaIndex] = updatedTurma;

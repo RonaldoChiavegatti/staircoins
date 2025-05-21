@@ -303,20 +303,20 @@ class AlunoDashboardScreen extends StatelessWidget {
           const SizedBox(height: 8),
 
           if (atividadesPendentes.isEmpty)
-            Card(
+            const Card(
               color: AppTheme.mutedColor,
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.assignment_outlined,
                       size: 48,
                       color: AppTheme.mutedForegroundColor,
                     ),
-                    const SizedBox(height: 16),
-                    const Text(
+                    SizedBox(height: 16),
+                    Text(
                       'Você não tem atividades pendentes no momento',
                       style: TextStyle(color: AppTheme.mutedForegroundColor),
                       textAlign: TextAlign.center,
@@ -359,14 +359,14 @@ class AlunoDashboardScreen extends StatelessWidget {
                                 color: AppTheme.warningColor.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: Row(
+                              child: const Row(
                                 children: [
-                                  const Icon(
+                                  Icon(
                                     Icons.access_time,
                                     size: 12,
                                     color: AppTheme.warningColor,
                                   ),
-                                  const SizedBox(width: 4),
+                                  SizedBox(width: 4),
                                   Text(
                                     'Pendente',
                                     style: TextStyle(
@@ -461,7 +461,7 @@ class AlunoDashboardScreen extends StatelessWidget {
                       child: Container(
                         width: double.infinity,
                         color: AppTheme.mutedColor,
-                        child: Center(
+                        child: const Center(
                           child: Icon(
                             Icons.image_outlined,
                             size: 48,

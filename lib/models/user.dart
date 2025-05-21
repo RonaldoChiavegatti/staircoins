@@ -21,7 +21,7 @@ class User {
     this.coins,
     this.staircoins = 0,
     this.turmas = const [],
-  }) : this.tipo = tipo ?? (type == UserType.professor ? 'professor' : 'aluno');
+  }) : tipo = tipo ?? (type == UserType.professor ? 'professor' : 'aluno');
 
   factory User.fromJson(Map<String, dynamic> json) {
     final userType = json['type'] == 'professor' ? UserType.professor : UserType.aluno;

@@ -95,25 +95,25 @@ class _AlunoAtividadesScreenState extends State<AlunoAtividadesScreen> {
           // Lista de atividades
           Expanded(
             child: filteredAtividades.isEmpty
-                ? Center(
+                ? const Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.assignment_outlined,
                           size: 64,
                           color: AppTheme.mutedForegroundColor,
                         ),
-                        const SizedBox(height: 16),
-                        const Text(
+                        SizedBox(height: 16),
+                        Text(
                           'Nenhuma atividade encontrada',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        const Text(
+                        SizedBox(height: 8),
+                        Text(
                           'Não há atividades que correspondam aos filtros selecionados',
                           style: TextStyle(
                             color: AppTheme.mutedForegroundColor,

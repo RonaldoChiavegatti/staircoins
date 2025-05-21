@@ -31,14 +31,14 @@ class AppTheme {
     primaryColor: primaryColor,
     scaffoldBackgroundColor: backgroundColor,
     fontFamily: 'Poppins',
-    colorScheme: ColorScheme.light(
+    colorScheme: const ColorScheme.light(
       primary: primaryColor,
       secondary: secondaryColor,
-      background: backgroundColor,
+      surface: backgroundColor,
       error: errorColor,
       onPrimary: Colors.white,
       onSecondary: Colors.white,
-      onBackground: foregroundColor,
+      onSurface: foregroundColor,
       onError: Colors.white,
     ),
     appBarTheme: const AppBarTheme(

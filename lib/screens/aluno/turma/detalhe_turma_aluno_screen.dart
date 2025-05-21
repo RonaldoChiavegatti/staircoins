@@ -150,25 +150,25 @@ class _DetalheTurmaAlunoScreenState extends State<DetalheTurmaAlunoScreen> with 
     ];
 
     if (atividades.isEmpty) {
-      return Center(
+      return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
+            Icon(
               Icons.assignment_outlined,
               size: 64,
               color: AppTheme.mutedForegroundColor,
             ),
-            const SizedBox(height: 16),
-            const Text(
+            SizedBox(height: 16),
+            Text(
               'Nenhuma atividade',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 8),
-            const Text(
+            SizedBox(height: 8),
+            Text(
               'Não há atividades disponíveis para esta turma no momento',
               style: TextStyle(
                 color: AppTheme.mutedForegroundColor,
@@ -213,7 +213,7 @@ class _DetalheTurmaAlunoScreenState extends State<DetalheTurmaAlunoScreen> with 
                         color: AppTheme.warningColor.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Text(
+                      child: const Text(
                         'Pendente',
                         style: TextStyle(
                           fontSize: 12,
@@ -277,25 +277,25 @@ class _DetalheTurmaAlunoScreenState extends State<DetalheTurmaAlunoScreen> with 
     ].where((aluno) => turma.alunos.contains(aluno['id'])).toList();
 
     if (alunos.isEmpty) {
-      return Center(
+      return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
+            Icon(
               Icons.people_outline,
               size: 64,
               color: AppTheme.mutedForegroundColor,
             ),
-            const SizedBox(height: 16),
-            const Text(
+            SizedBox(height: 16),
+            Text(
               'Nenhum colega na turma',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 8),
-            const Text(
+            SizedBox(height: 8),
+            Text(
               'Você é o primeiro aluno nesta turma',
               style: TextStyle(
                 color: AppTheme.mutedForegroundColor,
@@ -314,9 +314,9 @@ class _DetalheTurmaAlunoScreenState extends State<DetalheTurmaAlunoScreen> with 
         return Card(
           margin: const EdgeInsets.only(bottom: 8),
           child: ListTile(
-            leading: CircleAvatar(
+            leading: const CircleAvatar(
               backgroundColor: AppTheme.mutedColor,
-              child: const Icon(
+              child: Icon(
                 Icons.person_outline,
                 color: AppTheme.mutedForegroundColor,
               ),

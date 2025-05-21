@@ -4,7 +4,7 @@ import 'package:staircoins/providers/auth_provider.dart';
 import 'package:staircoins/theme/app_theme.dart';
 
 class AlunoProdutosScreen extends StatefulWidget {
-  const AlunoProdutosScreen({Key? key}) : super(key: key);
+  const AlunoProdutosScreen({super.key});
 
   @override
   State<AlunoProdutosScreen> createState() => _AlunoProdutosScreenState();

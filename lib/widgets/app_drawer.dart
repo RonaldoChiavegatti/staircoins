@@ -5,7 +5,7 @@ import 'package:staircoins/screens/auth/login_screen.dart';
 import 'package:staircoins/theme/app_theme.dart';
 
 class AppDrawer extends StatelessWidget {
-  const AppDrawer({Key? key}) : super(key: key);
+  const AppDrawer({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -17,7 +17,7 @@ class AppDrawer extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 20),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               gradient: AppTheme.primaryGradient,
             ),
             child: SafeArea(

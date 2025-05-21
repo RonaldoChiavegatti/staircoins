@@ -7,7 +7,7 @@ import 'package:staircoins/screens/professor/turma/nova_turma_screen.dart';
 import 'package:staircoins/theme/app_theme.dart';
 
 class ProfessorTurmasScreen extends StatelessWidget {
-  const ProfessorTurmasScreen({Key? key}) : super(key: key);
+  const ProfessorTurmasScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -147,7 +147,7 @@ class ProfessorTurmasScreen extends StatelessWidget {
                     ),
                     child: Text(
                       'Código: ${turma.codigo}',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 12,
                         color: AppTheme.primaryColor,
                         fontWeight: FontWeight.bold,

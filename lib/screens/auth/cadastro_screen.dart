@@ -130,7 +130,7 @@ class _CadastroScreenState extends State<CadastroScreen> {
                     ),
                     child: Row(
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.error_outline,
                           color: AppTheme.errorColor,
                         ),
@@ -138,7 +138,7 @@ class _CadastroScreenState extends State<CadastroScreen> {
                         Expanded(
                           child: Text(
                             _errorMessage!,
-                            style: TextStyle(
+                            style: const TextStyle(
                               color: AppTheme.errorColor,
                             ),
                           ),

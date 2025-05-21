@@ -207,9 +207,9 @@ class _DetalheTurmaScreenState extends State<DetalheTurmaScreen> with SingleTick
         return Card(
           margin: const EdgeInsets.only(bottom: 8),
           child: ListTile(
-            leading: CircleAvatar(
+            leading: const CircleAvatar(
               backgroundColor: AppTheme.mutedColor,
-              child: const Icon(
+              child: Icon(
                 Icons.person_outline,
                 color: AppTheme.mutedForegroundColor,
               ),

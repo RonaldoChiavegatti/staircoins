@@ -82,7 +82,7 @@ class _NovaTurmaScreenState extends State<NovaTurmaScreen> {
                   ),
                   child: Row(
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.error_outline,
                         color: AppTheme.errorColor,
                       ),
@@ -90,7 +90,7 @@ class _NovaTurmaScreenState extends State<NovaTurmaScreen> {
                       Expanded(
                         child: Text(
                           _errorMessage!,
-                          style: TextStyle(
+                          style: const TextStyle(
                             color: AppTheme.errorColor,
                           ),
                         ),
