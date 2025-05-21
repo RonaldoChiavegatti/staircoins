@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:staircoins/providers/auth_provider.dart';
 import 'package:staircoins/screens/auth/login_screen.dart';
 import 'package:staircoins/theme/app_theme.dart';
+import 'package:staircoins/screens/professor/professor_configuracoes_screen.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -65,8 +66,9 @@ class AppDrawer extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.settings),
             title: const Text('Configurações'),
-            onTap: () {
-              Navigator.pop(context);
+            onTap: () { Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ProfessorConfiguracoesScreen()));
             },
           ),
           const Spacer(),
