@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:staircoins/providers/auth_provider.dart';
 import 'package:staircoins/providers/turma_provider.dart';
+import 'package:staircoins/providers/produto_provider.dart';
 import 'package:staircoins/screens/splash_screen.dart';
 import 'package:staircoins/theme/app_theme.dart';
 
@@ -21,6 +22,7 @@ class MyApp extends StatelessWidget {
           create: (_) => TurmaProvider(null),
           update: (_, auth, __) => TurmaProvider(auth.user),
         ),
+        ChangeNotifierProvider(create: (_) => ProdutoProvider()),
       ],
       child: MaterialApp(
         title: 'StairCoins',

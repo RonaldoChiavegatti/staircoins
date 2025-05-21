@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:staircoins/screens/professor/cadastro_produto_screen.dart';
 import 'package:staircoins/theme/app_theme.dart';
 
 class ProfessorProdutosScreen extends StatelessWidget {
@@ -84,7 +85,12 @@ class ProfessorProdutosScreen extends StatelessWidget {
                         const SizedBox(height: 24),
                         ElevatedButton.icon(
                           onPressed: () {
-                            // TODO: Implementar criação de produto
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const CadastroProdutoScreen(),
+                              ),
+                            );
                           },
                           icon: const Icon(Icons.add),
                           label: const Text('Criar Produto'),

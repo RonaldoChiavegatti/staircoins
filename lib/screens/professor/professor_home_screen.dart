@@ -5,6 +5,7 @@ import 'package:staircoins/providers/auth_provider.dart';
 import 'package:staircoins/providers/turma_provider.dart';
 import 'package:staircoins/screens/professor/professor_atividades_screen.dart';
 import 'package:staircoins/screens/professor/professor_produtos_screen.dart';
+import 'package:staircoins/screens/professor/cadastro_produto_screen.dart';
 import 'package:staircoins/screens/professor/professor_turmas_screen.dart';
 import 'package:staircoins/screens/professor/turma/nova_turma_screen.dart';
 import 'package:staircoins/theme/app_theme.dart';
@@ -85,7 +86,12 @@ class _ProfessorHomeScreenState extends State<ProfessorHomeScreen> {
               // TODO: Implementar criação de atividade
               break;
             case 3: // Produtos
-              // TODO: Implementar criação de produto
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const CadastroProdutoScreen(),
+                ),
+              );
+
               break;
           }
         },
