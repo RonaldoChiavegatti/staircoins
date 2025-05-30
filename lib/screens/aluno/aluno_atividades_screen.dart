@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:staircoins/models/atividade.dart';
 import 'package:staircoins/theme/app_theme.dart';
+import 'package:staircoins/screens/aluno/atividade/detalhe_atividade_screen.dart';
 
 class AlunoAtividadesScreen extends StatefulWidget {
   const AlunoAtividadesScreen({super.key});
@@ -14,6 +16,7 @@ class _AlunoAtividadesScreenState extends State<AlunoAtividadesScreen> {
   @override
   Widget build(BuildContext context) {
     // Dados mockados para demonstração
+    // TODO: Replace with data from Provider
     final atividades = [
       {
         'id': '1',
@@ -132,7 +135,19 @@ class _AlunoAtividadesScreenState extends State<AlunoAtividadesScreen> {
                         margin: const EdgeInsets.only(bottom: 16),
                         child: InkWell(
                           onTap: () {
-                            // TODO: Implementar detalhes da atividade
+                            // Navigate to activity details screen
+                            // TODO: Get actual Atividade object from Provider
+                            final Atividade mockAtividade = Atividade(
+                              id: atividade['id'] as String,
+                              titulo: atividade['titulo'] as String,
+                              descricao: 'Esta é uma descrição mockada para demonstração.', // TODO: Get actual description
+                              dataEntrega: DateTime.parse('${atividade['dataEntrega']}T00:00:00.000'), // Assuming date format
+                              pontuacao: atividade['pontuacao'] as int,
+                              status: AtividadeStatus.values.firstWhere((e) => e.toString().split('.').last == atividade['status']),
+                              turmaId: 'mock_turma_id', // TODO: Get actual turmaId
+                            );
+                            Navigator.of(context).push(MaterialPageRoute(
+                                builder: (_) => DetalheAtividadeScreen(atividade: mockAtividade)));
                           },
                           borderRadius: BorderRadius.circular(16),
                           child: Padding(
