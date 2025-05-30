@@ -8,6 +8,7 @@ import 'package:staircoins/screens/professor/professor_produtos_screen.dart';
 import 'package:staircoins/screens/professor/cadastro_produto_screen.dart';
 import 'package:staircoins/screens/professor/professor_turmas_screen.dart';
 import 'package:staircoins/screens/professor/turma/nova_turma_screen.dart';
+import 'package:staircoins/screens/professor/atividade/nova_atividade_screen.dart';
 import 'package:staircoins/theme/app_theme.dart';
 import 'package:staircoins/widgets/app_drawer.dart';
 import 'package:staircoins/widgets/stat_card.dart';
@@ -83,7 +84,11 @@ class _ProfessorHomeScreenState extends State<ProfessorHomeScreen> {
               );
               break;
             case 2: // Atividades
-              // TODO: Implementar criação de atividade
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const NovaAtividadeScreen(),
+                ),
+              );
               break;
             case 3: // Produtos
               Navigator.of(context).push(
@@ -187,6 +192,7 @@ class ProfessorDashboardScreen extends StatelessWidget {
                 onPressed: () {
                   (context.findAncestorStateOfType<_ProfessorHomeScreenState>()
                           as _ProfessorHomeScreenState)
+                      // ignore: invalid_use_of_protected_member
                       .setState(() {
                     (context.findAncestorStateOfType<_ProfessorHomeScreenState>()
                             as _ProfessorHomeScreenState)
@@ -257,6 +263,7 @@ class ProfessorDashboardScreen extends StatelessWidget {
                 onPressed: () {
                   (context.findAncestorStateOfType<_ProfessorHomeScreenState>()
                           as _ProfessorHomeScreenState)
+                      // ignore: invalid_use_of_protected_member
                       .setState(() {
                     (context.findAncestorStateOfType<_ProfessorHomeScreenState>()
                             as _ProfessorHomeScreenState)

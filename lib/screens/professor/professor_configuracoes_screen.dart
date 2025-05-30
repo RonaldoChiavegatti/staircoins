@@ -4,7 +4,7 @@ import 'package:staircoins/providers/auth_provider.dart';
 import 'package:staircoins/theme/app_theme.dart';
 
 class ProfessorConfiguracoesScreen extends StatefulWidget {
-  const ProfessorConfiguracoesScreen({Key? key}) : super(key: key);
+  const ProfessorConfiguracoesScreen({super.key});
 
   @override
   _ProfessorConfiguracoesScreenState createState() => _ProfessorConfiguracoesScreenState();
