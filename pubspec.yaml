@@ -36,6 +36,23 @@ dependencies:
   uuid: ^4.2.2
   share_plus: ^7.2.1
   intl: ^0.20.2
+  
+  # Firebase
+  # Nota: A configuração do Firebase é feita manualmente, sem usar a CLI flutterfire.
+  # Veja as instruções em SETUP.md para detalhes sobre a configuração manual.
+  firebase_core: ^2.27.1
+  firebase_auth: ^4.17.9
+  cloud_firestore: ^4.15.9
+  firebase_storage: ^11.6.10
+  firebase_analytics: ^10.8.10
+  
+  # Injeção de Dependência
+  get_it: ^7.6.7
+  
+  # Utilitários
+  dartz: ^0.10.1
+  internet_connection_checker: ^1.0.0+1
+  equatable: ^2.0.5
 
 
   # The following adds the Cupertino Icons font to your application.

@@ -75,3 +75,57 @@ Atualmente, o aplicativo utiliza dados simulados para demonstração:
 
 ## Screenshots
 [Inserir screenshots do aplicativo aqui]
+
+## Inicialização do Firebase com Dados de Teste
+
+Para facilitar os testes e o desenvolvimento, o StairCoins oferece duas maneiras de inicializar o Firebase com dados de teste:
+
+### Opção 1: Botão na Tela de Login
+
+Na tela de login, há um botão na parte inferior chamado "Inicializar Firebase com dados de teste". Ao clicar neste botão, o sistema irá:
+
+1. Criar usuários de teste:
+   - Professor: professor@teste.com (senha: senha123)
+   - Alunos: aluno1@teste.com, aluno2@teste.com, aluno3@teste.com (senha: senha123 para todos)
+
+2. Criar turmas de teste com códigos:
+   - Matemática - 9º Ano (MAT9A)
+   - Ciências - 8º Ano (CIE8B)
+   - História - 7º Ano (HIS7C)
+
+3. Criar diversas atividades para cada turma
+
+4. Criar produtos para resgate com StairCoins
+
+### Opção 2: Executando o Script Diretamente
+
+Para inicializar o Firebase via linha de comando:
+
+```bash
+flutter run lib/scripts/run_seed.dart
+```
+
+Este script executa a mesma inicialização que o botão na interface, mas pode ser útil para ambientes de desenvolvimento ou CI/CD.
+
+### Dados Criados
+
+A inicialização cria os seguintes dados:
+
+#### Usuários
+- Professor: professor@teste.com (senha: senha123)
+- Aluno 1: aluno1@teste.com (senha: senha123)
+- Aluno 2: aluno2@teste.com (senha: senha123)
+- Aluno 3: aluno3@teste.com (senha: senha123)
+
+#### Turmas
+- Matemática - 9º Ano (código: MAT9A)
+- Ciências - 8º Ano (código: CIE8B)
+- História - 7º Ano (código: HIS7C)
+
+#### Atividades
+Diversas atividades distribuídas entre as turmas, com diferentes pontuações e datas de entrega.
+
+#### Produtos
+Vários produtos disponíveis para resgate com diferentes valores em StairCoins.
+
+**Nota**: A inicialização verifica a existência prévia dos dados para evitar duplicações. É seguro executar o script múltiplas vezes.

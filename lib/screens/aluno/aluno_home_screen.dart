@@ -82,7 +82,7 @@ class AlunoDashboardScreen extends StatelessWidget {
     final turmaProvider = Provider.of<TurmaProvider>(context);
     final user = authProvider.user;
     final minhasTurmas = turmaProvider.getMinhasTurmas();
-    final coins = user?.coins ?? 0;
+    final coins = user?.staircoins ?? 0;
 
     // Próxima meta (simulação)
     const proximaMeta = 200;

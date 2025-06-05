@@ -1,142 +1,222 @@
-# Arquitetura do Aplicativo StairCoins
+# Arquitetura do Projeto StairCoins
 
-## Visão Geral da Arquitetura
+## Visão Geral
 
-O StairCoins utiliza uma arquitetura baseada em Provider para gerenciamento de estado, seguindo padrões de projeto recomendados para aplicativos Flutter.
+O projeto StairCoins segue os princípios de Clean Architecture e SOLID, organizando o código em camadas bem definidas com responsabilidades claras. A arquitetura foi projetada para facilitar a manutenção, testabilidade e escalabilidade do aplicativo.
 
-```
-┌───────────────────────┐
-│     Apresentação      │
-│  (Screens, Widgets)   │
-└─────────┬─────────────┘
-          │
-          ▼
-┌───────────────────────┐
-│    Lógica de Estado   │
-│      (Providers)      │
-└─────────┬─────────────┘
-          │
-          ▼
-┌───────────────────────┐
-│    Modelo de Dados    │
-│       (Models)        │
-└─────────┬─────────────┘
-          │
-          ▼
-┌───────────────────────┐
-│   Armazenamento Local │
-│  (SharedPreferences)  │
-└───────────────────────┘
-```
-
-## Diagrama de Fluxo de Dados
+## Camadas da Arquitetura
 
 ```
-┌─────────────┐     ┌────────────┐     ┌────────────┐
-│  UI Events  │────▶│  Providers │────▶│   Models   │
-└─────────────┘     └─────┬──────┘     └────────────┘
-                          │
-                          ▼
-                    ┌────────────┐
-                    │  Storage   │
-                    └────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                     Camada de Apresentação                      │
+│  ┌──────────┐      ┌───────────┐       ┌────────────────────┐   │
+│  │ Screens  │◄────►│  Widgets  │◄─────►│ Providers (State)  │   │
+│  └──────────┘      └───────────┘       └────────────────────┘   │
+└───────────────────────────────┬─────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                        Camada de Domínio                        │
+│  ┌───────────────────────┐    ┌────────────┐    ┌───────────┐   │
+│  │ Repository Interfaces │    │  Use Cases │    │   Models  │   │
+│  └───────────────────────┘    └────────────┘    └───────────┘   │
+└───────────────────────────────┬─────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                        Camada de Dados                          │
+│  ┌───────────────────────┐           ┌───────────────────────┐  │
+│  │ Repository Impl       │◄─────────►│ DataSources           │  │
+│  │ ┌─────────────────┐   │           │ ┌─────────────────┐   │  │
+│  │ │ AuthRepository  │   │           │ │ FirebaseAuth    │   │  │
+│  │ └─────────────────┘   │           │ └─────────────────┘   │  │
+│  │ ┌─────────────────┐   │           │ ┌─────────────────┐   │  │
+│  │ │ TurmaRepository │   │           │ │ FirestoreData   │   │  │
+│  │ └─────────────────┘   │           │ └─────────────────┘   │  │
+│  └───────────────────────┘           └───────────────────────┘  │
+└───────────────────────────────┬─────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    Camada de Infraestrutura                     │
+│  ┌──────────────┐  ┌──────────────┐  ┌───────────────────────┐  │
+│  │ DI (get_it)  │  │ Network Info │  │ Errors/Exceptions     │  │
+│  └──────────────┘  └──────────────┘  └───────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-## Estrutura de Pastas
+### 1. Camada de Apresentação (UI)
+- **Screens**: Contém as telas do aplicativo
+- **Widgets**: Componentes reutilizáveis
+- **Providers**: Gerenciadores de estado usando o padrão Provider
+
+### 2. Camada de Domínio
+- **Repositories (Interfaces)**: Contratos para acesso a dados
+- **Models**: Entidades de domínio
+- **Use Cases**: Regras de negócio específicas (quando necessário)
+
+### 3. Camada de Dados
+- **Repositories (Implementações)**: Implementações concretas dos repositórios
+- **DataSources**: Fontes de dados (Firebase, cache local, etc.)
+
+### 4. Camada de Core/Infraestrutura
+- **DI**: Injeção de dependências
+- **Network**: Verificação de conectividade
+- **Errors**: Tratamento de erros e exceções
+
+## Fluxo de Dados
+
+```
+┌───────────┐     ┌────────────┐     ┌─────────────────┐     ┌─────────────────┐     ┌───────────────┐     ┌─────────────┐
+│           │     │            │     │                 │     │                 │     │               │     │             │
+│    UI     │◄───►│  Providers │◄───►│  Repositories   │◄───►│  Repositories   │◄───►│  DataSources  │◄───►│  Firebase/  │
+│  Screens  │     │   State    │     │  (Interfaces)   │     │ (Implementation)│     │               │     │  Storage    │
+│           │     │            │     │                 │     │                 │     │               │     │             │
+└───────────┘     └────────────┘     └─────────────────┘     └─────────────────┘     └───────────────┘     └─────────────┘
+```
+
+## Injeção de Dependências
+
+Utilizamos o pacote `get_it` para gerenciar as dependências do aplicativo, seguindo o princípio de inversão de dependência (SOLID). As dependências são configuradas no arquivo `lib/core/di/injection_container.dart`.
+
+```
+┌───────────────────────────────────────────────────────────────────────┐
+│                       Injeção de Dependências                         │
+│                                                                       │
+│  ┌─────────────┐        registra       ┌─────────────────────────┐    │
+│  │             │◄─────────────────────►│                         │    │
+│  │   get_it    │                       │  injection_container.dart│    │
+│  │  container  │                       │                         │    │
+│  │             │                       │                         │    │
+│  └─────────────┘                       └─────────────────────────┘    │
+│         ▲                                                             │
+│         │                                                             │
+│         │ resolve                                                     │
+│         │                                                             │
+│  ┌──────┴──────┐     ┌─────────────┐      ┌────────────────┐          │
+│  │             │     │             │      │                │          │
+│  │  Providers  │     │ Repositories│      │  DataSources   │          │
+│  │             │     │             │      │                │          │
+│  └─────────────┘     └─────────────┘      └────────────────┘          │
+│                                                                       │
+└───────────────────────────────────────────────────────────────────────┘
+```
+
+## Tratamento de Erros
+
+O tratamento de erros é feito usando o padrão Either do pacote `dartz`, que permite retornar ou um sucesso (Right) ou uma falha (Left), tornando explícito o tratamento de erros.
+
+```
+┌───────────────────────────────────────────────────────────────────────────────┐
+│                           Padrão Either (dartz)                               │
+│                                                                               │
+│  ┌─────────────────────┐                          ┌─────────────────────────┐ │
+│  │                     │                          │                         │ │
+│  │  Left<Failure, T>   │◄─── Erro/Falha ──────────┤  Future<Either<F, S>>   │ │
+│  │                     │                          │                         │ │
+│  └─────────────────────┘                          └─────────────────────────┘ │
+│                                                             │                 │
+│                                                             │                 │
+│  ┌─────────────────────┐                                    │                 │
+│  │                     │                                    │                 │
+│  │  Right<Failure, T>  │◄─── Sucesso ────────────────────────                 │
+│  │                     │                                                      │
+│  └─────────────────────┘                                                      │
+│                                                                               │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+// Exemplo de método em um repositório
+Future<Either<Failure, User>> login(String email, String password);
+```
+
+## Integração com Firebase
+
+```
+┌───────────────────────────────────────────────────────────────────────────────┐
+│                         Integração com Firebase                               │
+│                                                                               │
+│  ┌─────────────────────┐     ┌─────────────────────┐    ┌──────────────────┐  │
+│  │                     │     │                     │    │                  │  │
+│  │  Firebase Auth      │◄───►│  Authentication     │◄──►│  AuthRepository  │  │
+│  │                     │     │  DataSource         │    │                  │  │
+│  └─────────────────────┘     └─────────────────────┘    └──────────────────┘  │
+│                                                                               │
+│  ┌─────────────────────┐     ┌─────────────────────┐    ┌──────────────────┐  │
+│  │                     │     │                     │    │                  │  │
+│  │  Cloud Firestore    │◄───►│  Firestore          │◄──►│  TurmaRepository │  │
+│  │                     │     │  DataSource         │    │                  │  │
+│  └─────────────────────┘     └─────────────────────┘    └──────────────────┘  │
+│                                                                               │
+│  ┌─────────────────────┐     ┌─────────────────────┐                          │
+│  │                     │     │                     │                          │
+│  │  Firebase Storage   │◄───►│  Storage            │                          │
+│  │  (opcional)         │     │  DataSource         │                          │
+│  └─────────────────────┘     └─────────────────────┘                          │
+│                                                                               │
+└───────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Firebase Authentication
+- Gerenciamento de autenticação de usuários (alunos e professores)
+- Registro, login, logout e recuperação de senha
+
+### Cloud Firestore
+- Armazenamento de dados estruturados
+- Collections: users, turmas, atividades, produtos
+
+### Firebase Storage (opcional)
+- Armazenamento de arquivos (imagens de perfil, etc.)
+
+## Estrutura de Diretórios
 
 ```
 lib/
-├── main.dart                  # Ponto de entrada da aplicação
-├── models/                    # Modelos de dados
-│   ├── user.dart
-│   ├── turma.dart
-│   ├── atividade.dart
-│   └── produto.dart
-├── providers/                 # Gerenciamento de estado
-│   ├── auth_provider.dart
-│   ├── turma_provider.dart
-│   └── atividade_provider.dart
-├── screens/                   # Interfaces de usuário
-│   ├── auth/
-│   │   ├── login_screen.dart
-│   │   └── register_screen.dart
-│   ├── splash_screen.dart
-│   ├── professor/
-│   │   ├── professor_home_screen.dart
-│   │   ├── professor_turmas_screen.dart
-│   │   ├── professor_atividades_screen.dart
-│   │   └── professor_produtos_screen.dart
-│   └── aluno/
-│       ├── aluno_home_screen.dart
-│       ├── aluno_turmas_screen.dart
-│       ├── aluno_atividades_screen.dart
-│       └── aluno_produtos_screen.dart
-├── widgets/                   # Componentes reutilizáveis
-│   ├── app_drawer.dart
-│   ├── atividade_card.dart
-│   ├── produto_card.dart
-│   └── turma_card.dart
-└── theme/                     # Definição do tema
-    └── app_theme.dart
+├── core/
+│   ├── di/                  # Injeção de dependências
+│   ├── errors/              # Classes de erros e exceções
+│   └── network/             # Verificação de conectividade
+├── data/
+│   ├── datasources/         # Implementações de fontes de dados
+│   └── repositories/        # Implementações de repositórios
+├── domain/
+│   └── repositories/        # Interfaces de repositórios
+├── models/                  # Modelos/entidades
+├── providers/               # Gerenciadores de estado
+├── screens/                 # Telas do aplicativo
+├── theme/                   # Configurações de tema
+├── widgets/                 # Widgets reutilizáveis
+├── firebase_options.dart    # Configurações do Firebase
+└── main.dart                # Ponto de entrada do aplicativo
 ```
 
-## Fluxo de Autenticação
+## Padrões de Design Utilizados
 
-```
-┌────────────┐     ┌────────────┐     ┌─────────────┐
-│Login Screen│────▶│AuthProvider│────▶│SharedPrefs  │
-└────────────┘     └─────┬──────┘     └─────────────┘
-                         │
-                         ▼
-                   ┌────────────┐
-                   │ User Model │
-                   └─────┬──────┘
-                         │
-                         ▼
-               ┌─────────────────────┐
-               │Professor/Aluno Home │
-               └─────────────────────┘
-```
+1. **Repository Pattern**: Abstrai a fonte de dados, permitindo trocar a implementação sem afetar o restante do código.
+2. **Provider Pattern**: Gerenciamento de estado e injeção de dependências na UI.
+3. **Dependency Injection**: Inversão de controle para facilitar testes e manutenção.
+4. **Factory Pattern**: Criação de objetos em classes como `User.fromFirestore()`.
+5. **Singleton Pattern**: Utilizado para instâncias únicas como FirebaseAuth.
 
-## Fluxo de Dados (Turmas)
+## Regras de Segurança do Firestore
 
-```
-┌────────────┐     ┌────────────────┐     ┌───────────┐
-│ Turma UI   │────▶│ TurmaProvider  │────▶│Turma Model│
-└────────────┘     └────────┬───────┘     └───────────┘
-                            │
-                            ▼
-                     ┌─────────────┐
-                     │SharedPrefs  │
-                     └─────────────┘
-```
+As regras de segurança do Firestore são configuradas para garantir que:
 
-## Padrões de Arquitetura Aplicados
+1. Apenas usuários autenticados podem ler/escrever dados
+2. Professores só podem modificar suas próprias turmas
+3. Alunos só podem ver turmas às quais pertencem
+4. Códigos de turma são únicos
 
-1. **Provider Pattern**: Para injeção de dependência e gerenciamento de estado
-2. **Repository Pattern** (simulado): Os providers atuam como repositórios
-3. **Factory Pattern**: Usado nos modelos para construção de objetos
-4. **Observer Pattern**: Implementado através do ChangeNotifier
+## Estratégia de Migração e Testes
 
-## Considerações para Backend
+Durante o desenvolvimento, implementamos uma estratégia de toggle entre dados mockados e Firebase, permitindo:
 
-Quando o backend for implementado, a arquitetura será atualizada para:
+1. Desenvolvimento sem dependência imediata do Firebase
+2. Testes unitários sem acesso a serviços externos
+3. Migração gradual para o Firebase
 
-```
-┌───────────┐     ┌────────────┐     ┌───────────┐     ┌────────────┐
-│   UI      │────▶│ Providers  │────▶│ Services  │────▶│   API      │
-└───────────┘     └────────────┘     └───────────┘     └────────────┘
-                        │                                     │
-                        ▼                                     ▼
-                  ┌────────────┐                      ┌─────────────┐
-                  │   Models   │                      │ Database    │
-                  └────────────┘                      └─────────────┘
-```
+## Considerações sobre Performance
 
-## Futuras Melhorias Arquiteturais
-
-1. **Camada de Serviço**: Adicionar serviços para separar a lógica de negócios da lógica de UI
-2. **Clean Architecture**: Evolução para uma arquitetura mais escalável com casos de uso
-3. **Injeção de Dependência**: Utilizar um sistema mais robusto como GetIt ou Riverpod
-4. **Gerenciamento de Estado**: Considerar Bloc para estados mais complexos
-5. **Testes**: Estrutura para facilitar testes unitários e de integração 
+1. Índices configurados no Firestore para consultas frequentes
+2. Paginação para listas grandes
+3. Uso de cache local para dados frequentemente acessados
+4. Otimização de consultas para minimizar leituras/escritas no Firestore 

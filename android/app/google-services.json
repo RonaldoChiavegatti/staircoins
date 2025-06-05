@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "878771198572",
+    "project_id": "starcoins-782b2",
+    "storage_bucket": "starcoins-782b2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:878771198572:android:eacba35b09962cfcc15649",
+        "android_client_info": {
+          "package_name": "com.example.staircoins"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC8ThpEN91P9SUNhyeUTvZZJjbePaK31Gg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+} 

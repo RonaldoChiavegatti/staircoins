@@ -1,4 +1,7 @@
-class Turma {
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:equatable/equatable.dart';
+
+class Turma extends Equatable {
   final String id;
   final String nome;
   final String descricao;
@@ -6,8 +9,9 @@ class Turma {
   final List<String> alunos;
   final List<String> atividades;
   final String codigo;
+  final DateTime? createdAt;
 
-  Turma({
+  const Turma({
     required this.id,
     required this.nome,
     required this.descricao,
@@ -15,6 +19,7 @@ class Turma {
     required this.alunos,
     this.atividades = const [],
     required this.codigo,
+    this.createdAt,
   });
 
   factory Turma.fromJson(Map<String, dynamic> json) {
@@ -28,6 +33,31 @@ class Turma {
           ? List<String>.from(json['atividades']) 
           : [],
       codigo: json['codigo'],
+      createdAt: json['createdAt'] != null 
+          ? (json['createdAt'] is Timestamp 
+              ? (json['createdAt'] as Timestamp).toDate() 
+              : DateTime.parse(json['createdAt'].toString()))
+          : null,
+    );
+  }
+
+  factory Turma.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return Turma(
+      id: doc.id,
+      nome: data['nome'] ?? '',
+      descricao: data['descricao'] ?? '',
+      professorId: data['professorId'] ?? '',
+      alunos: data['alunos'] != null 
+          ? List<String>.from(data['alunos']) 
+          : [],
+      atividades: data['atividades'] != null 
+          ? List<String>.from(data['atividades']) 
+          : [],
+      codigo: data['codigo'] ?? '',
+      createdAt: data['createdAt'] != null 
+          ? (data['createdAt'] as Timestamp).toDate() 
+          : null,
     );
   }
 
@@ -40,6 +70,19 @@ class Turma {
       'alunos': alunos,
       'atividades': atividades,
       'codigo': codigo,
+      'createdAt': createdAt?.toIso8601String(),
+    };
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'nome': nome,
+      'descricao': descricao,
+      'professorId': professorId,
+      'alunos': alunos,
+      'atividades': atividades,
+      'codigo': codigo,
+      'createdAt': createdAt ?? FieldValue.serverTimestamp(),
     };
   }
 
@@ -51,6 +94,7 @@ class Turma {
     List<String>? alunos,
     List<String>? atividades,
     String? codigo,
+    DateTime? createdAt,
   }) {
     return Turma(
       id: id ?? this.id,
@@ -60,6 +104,19 @@ class Turma {
       alunos: alunos ?? this.alunos,
       atividades: atividades ?? this.atividades,
       codigo: codigo ?? this.codigo,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
+  
+  @override
+  List<Object?> get props => [
+    id, 
+    nome, 
+    descricao, 
+    professorId, 
+    alunos, 
+    atividades, 
+    codigo, 
+    createdAt
+  ];
 }

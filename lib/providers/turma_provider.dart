@@ -1,51 +1,53 @@
 import 'package:flutter/material.dart';
+import 'package:staircoins/domain/repositories/turma_repository.dart';
 import 'package:staircoins/models/turma.dart';
 import 'package:staircoins/models/user.dart';
-import 'package:uuid/uuid.dart';
+import 'package:staircoins/providers/auth_provider.dart';
+import 'package:staircoins/core/di/injection_container.dart' as di;
 
 class TurmaProvider with ChangeNotifier {
-  final User? _user;
+  final TurmaRepository turmaRepository;
+  late final AuthProvider authProvider;
+  
   List<Turma> _turmas = [];
   bool _isLoading = false;
+  String? _errorMessage;
 
-  TurmaProvider(this._user) {
+  TurmaProvider({
+    required this.turmaRepository,
+  }) {
+    authProvider = di.sl<AuthProvider>();
     _loadTurmas();
   }
 
   List<Turma> get turmas => _turmas;
   bool get isLoading => _isLoading;
-
-  // Dados mockados para simulação
-  final List<Map<String, dynamic>> _mockTurmas = [
-    {
-      'id': '1',
-      'nome': 'Matemática - 9º Ano',
-      'descricao': 'Turma de matemática do 9º ano do ensino fundamental',
-      'professorId': '1',
-      'alunos': ['2'],
-      'codigo': 'MAT9A',
-    },
-    {
-      'id': '2',
-      'nome': 'História - 8º Ano',
-      'descricao': 'Turma de história do 8º ano do ensino fundamental',
-      'professorId': '1',
-      'alunos': [],
-      'codigo': 'HIS8A',
-    },
-  ];
+  String? get errorMessage => _errorMessage;
 
   Future<void> _loadTurmas() async {
+    if (authProvider.user == null) return;
+    
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
 
     try {
-      // Simulando delay de rede
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      _turmas = _mockTurmas.map((t) => Turma.fromJson(t)).toList();
+      if (authProvider.isProfessor) {
+        final result = await turmaRepository.listarTurmasPorProfessor(authProvider.user!.id);
+        result.fold(
+          (failure) => _errorMessage = failure.message,
+          (turmas) => _turmas = turmas,
+        );
+      } else {
+        final result = await turmaRepository.listarTurmasPorAluno(authProvider.user!.id);
+        result.fold(
+          (failure) => _errorMessage = failure.message,
+          (turmas) => _turmas = turmas,
+        );
+      }
     } catch (e) {
       debugPrint('Erro ao carregar turmas: $e');
+      _errorMessage = 'Erro ao carregar turmas';
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -53,86 +55,123 @@ class TurmaProvider with ChangeNotifier {
   }
 
   List<Turma> getMinhasTurmas() {
-    if (_user == null) return [];
-    return _turmas.where((turma) => _user.turmas.contains(turma.id)).toList();
+    final user = authProvider.user;
+    if (user == null) return [];
+    
+    if (authProvider.isProfessor) {
+      return _turmas.where((turma) => turma.professorId == user.id).toList();
+    } else {
+      return _turmas.where((turma) => turma.alunos.contains(user.id)).toList();
+    }
   }
 
-  Future<void> adicionarTurma(String nome, String descricao, String codigo) async {
-    if (_user == null || _user.type != UserType.professor) {
-      throw Exception('Apenas professores podem criar turmas');
+  Future<bool> adicionarTurma(String nome, String descricao, String codigo) async {
+    final user = authProvider.user;
+    if (user == null || user.type != UserType.professor) {
+      _errorMessage = 'Apenas professores podem criar turmas';
+      notifyListeners();
+      return false;
     }
 
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
 
     try {
-      // Simulando delay de rede
-      await Future.delayed(const Duration(seconds: 1));
-
-      // Verifica se o código já existe
-      if (_turmas.any((t) => t.codigo == codigo)) {
-        throw Exception('Este código de turma já está em uso');
-      }
-
-      // Cria nova turma
+      // Criar nova turma
       final novaTurma = Turma(
-        id: const Uuid().v4(),
+        id: '', // ID será gerado pelo Firestore
         nome: nome,
         descricao: descricao,
-        codigo: codigo,
-        professorId: _user.id,
+        codigo: codigo.toUpperCase(),
+        professorId: user.id,
         alunos: [],
       );
 
-      // Adiciona à lista de turmas
-      _turmas.add(novaTurma);
-      _mockTurmas.add(novaTurma.toJson());
-
-      notifyListeners();
+      final result = await turmaRepository.criarTurma(novaTurma);
+      
+      return result.fold(
+        (failure) {
+          _errorMessage = failure.message;
+          return false;
+        },
+        (turma) {
+          _turmas.add(turma);
+          notifyListeners();
+          return true;
+        }
+      );
     } catch (e) {
-      rethrow;
+      _errorMessage = e.toString();
+      return false;
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  Future<void> entrarTurma(String codigo) async {
-    if (_user == null || _user.type != UserType.aluno) {
-      throw Exception('Apenas alunos podem entrar em turmas');
+  Future<bool> entrarTurma(String codigo) async {
+    final user = authProvider.user;
+    if (user == null || user.type != UserType.aluno) {
+      _errorMessage = 'Apenas alunos podem entrar em turmas';
+      notifyListeners();
+      return false;
     }
 
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
 
     try {
-      // Simulando delay de rede
-      await Future.delayed(const Duration(seconds: 1));
-
       // Busca a turma pelo código
-      final turmaIndex = _turmas.indexWhere((t) => t.codigo == codigo);
-      if (turmaIndex == -1) {
-        throw Exception('Turma não encontrada');
-      }
-
-      final turma = _turmas[turmaIndex];
-
-      // Verifica se o aluno já está na turma
-      if (turma.alunos.contains(_user.id)) {
-        throw Exception('Você já está nesta turma');
-      }
-
-      // Adiciona o aluno à turma
-      final updatedTurma = turma.copyWith(
-        alunos: [...turma.alunos, _user.id],
+      final turmaPorCodigoResult = await turmaRepository.buscarTurmaPorCodigo(codigo);
+      
+      return await turmaPorCodigoResult.fold(
+        (failure) {
+          _errorMessage = failure.message;
+          return false;
+        },
+        (turma) async {
+          // Verifica se o aluno já está na turma
+          if (turma.alunos.contains(user.id)) {
+            _errorMessage = 'Você já está nesta turma';
+            return false;
+          }
+          
+          // Adicionar aluno à turma
+          final adicionarAlunoResult = await turmaRepository.adicionarAlunoTurma(turma.id, user.id);
+          
+          return await adicionarAlunoResult.fold(
+            (failure) {
+              _errorMessage = failure.message;
+              return false;
+            },
+            (turmaNova) async {
+              // Adicionar turma ao aluno
+              final addTurmaToUserResult = await authProvider.addTurmaToUser(turma.id);
+              
+              if (addTurmaToUserResult) {
+                // Atualiza a lista local
+                final index = _turmas.indexWhere((t) => t.id == turma.id);
+                if (index >= 0) {
+                  _turmas[index] = turmaNova;
+                } else {
+                  _turmas.add(turmaNova);
+                }
+                
+                notifyListeners();
+                return true;
+              } else {
+                _errorMessage = 'Erro ao adicionar turma ao usuário';
+                return false;
+              }
+            }
+          );
+        }
       );
-
-      _turmas[turmaIndex] = updatedTurma;
-      _mockTurmas[turmaIndex] = updatedTurma.toJson();
-
-      notifyListeners();
     } catch (e) {
-      rethrow;
+      _errorMessage = e.toString();
+      return false;
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -147,5 +186,15 @@ class TurmaProvider with ChangeNotifier {
     }
   }
 
-  List<Turma> get turmasProfessor => _turmas.where((t) => t.professorId == _user?.id).toList();
+  List<Turma> get turmasProfessor {
+    final user = authProvider.user;
+    if (user == null || user.type != UserType.professor) return [];
+    
+    return _turmas.where((t) => t.professorId == user.id).toList();
+  }
+  
+  // Recarregar turmas
+  Future<void> recarregarTurmas() async {
+    await _loadTurmas();
+  }
 }
