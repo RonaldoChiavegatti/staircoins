@@ -31,6 +31,40 @@ class _ProfessorHomeScreenState extends State<ProfessorHomeScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    // Inicializar o TurmaProvider quando a tela for exibida
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _inicializarProviders();
+    });
+  }
+
+  Future<void> _inicializarProviders() async {
+    final turmaProvider = Provider.of<TurmaProvider>(context, listen: false);
+    debugPrint('ProfessorHomeScreen: Inicializando TurmaProvider');
+
+    // Verificar se o usuário está autenticado
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (authProvider.isAuthenticated) {
+      debugPrint(
+          'ProfessorHomeScreen: Usuário autenticado: ${authProvider.user?.name} (${authProvider.user?.id})');
+
+      // Forçar o carregamento das turmas
+      await turmaProvider.init();
+
+      // Verificar se as turmas foram carregadas
+      final turmas = turmaProvider.turmasProfessor;
+      debugPrint('ProfessorHomeScreen: Turmas carregadas: ${turmas.length}');
+      for (var turma in turmas) {
+        debugPrint(
+            'ProfessorHomeScreen: Turma: ${turma.id} - ${turma.nome} - ${turma.codigo}');
+      }
+    } else {
+      debugPrint('ProfessorHomeScreen: Usuário não autenticado');
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -107,8 +141,28 @@ class _ProfessorHomeScreenState extends State<ProfessorHomeScreen> {
   }
 }
 
-class ProfessorDashboardScreen extends StatelessWidget {
+class ProfessorDashboardScreen extends StatefulWidget {
   const ProfessorDashboardScreen({super.key});
+
+  @override
+  State<ProfessorDashboardScreen> createState() =>
+      _ProfessorDashboardScreenState();
+}
+
+class _ProfessorDashboardScreenState extends State<ProfessorDashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Recarregar turmas quando a tela for exibida
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _carregarTurmas();
+    });
+  }
+
+  Future<void> _carregarTurmas() async {
+    final turmaProvider = Provider.of<TurmaProvider>(context, listen: false);
+    await turmaProvider.recarregarTurmas();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -116,10 +170,12 @@ class ProfessorDashboardScreen extends StatelessWidget {
     final turmaProvider = Provider.of<TurmaProvider>(context);
     final user = authProvider.user;
     final minhasTurmas = turmaProvider.getMinhasTurmas();
+    final isLoading = turmaProvider.isLoading;
 
     // Dados mockados para demonstração
     final stats = {
-      'totalAlunos': 28,
+      'totalAlunos': minhasTurmas.fold<int>(
+          0, (prev, turma) => prev + turma.alunos.length),
       'atividadesAtivas': 5,
       'produtosCadastrados': 12,
     };
@@ -142,231 +198,258 @@ class ProfessorDashboardScreen extends StatelessWidget {
       },
     ];
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Saudação
-          Text(
-            'Olá, ${user?.name}!',
-            style: Theme.of(context).textTheme.displayMedium,
-          ),
-          const Text(
-            'Bem-vindo ao seu painel de controle',
-            style: TextStyle(color: AppTheme.mutedForegroundColor),
-          ),
-          const SizedBox(height: 24),
+    return RefreshIndicator(
+      onRefresh: _carregarTurmas,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Saudação
+            Text(
+              'Olá, ${user?.name}!',
+              style: Theme.of(context).textTheme.displayMedium,
+            ),
+            const Text(
+              'Bem-vindo ao seu painel de controle',
+              style: TextStyle(color: AppTheme.mutedForegroundColor),
+            ),
+            const SizedBox(height: 24),
 
-          // Cards de estatísticas
-          Row(
-            children: [
-              Expanded(
-                child: StatCard(
-                  title: 'Alunos',
-                  value: stats['totalAlunos'].toString(),
-                  icon: Icons.people_outline,
+            // Cards de estatísticas
+            Row(
+              children: [
+                Expanded(
+                  child: StatCard(
+                    title: 'Alunos',
+                    value: stats['totalAlunos'].toString(),
+                    icon: Icons.people_outline,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: StatCard(
-                  title: 'Atividades',
-                  value: stats['atividadesAtivas'].toString(),
-                  icon: Icons.assignment_outlined,
+                const SizedBox(width: 16),
+                Expanded(
+                  child: StatCard(
+                    title: 'Atividades',
+                    value: stats['atividadesAtivas'].toString(),
+                    icon: Icons.assignment_outlined,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
+              ],
+            ),
+            const SizedBox(height: 24),
 
-          // Minhas Turmas
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Minhas Turmas',
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              TextButton(
-                onPressed: () {
-                  (context.findAncestorStateOfType<_ProfessorHomeScreenState>()
-                          as _ProfessorHomeScreenState)
-                      // ignore: invalid_use_of_protected_member
-                      .setState(() {
-                    (context.findAncestorStateOfType<_ProfessorHomeScreenState>()
-                            as _ProfessorHomeScreenState)
-                        ._selectedIndex = 1;
-                  });
-                },
-                child: const Text('Ver todas'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-
-          if (minhasTurmas.isEmpty)
-            Card(
-              color: AppTheme.mutedColor,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+            // Minhas Turmas
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Minhas Turmas',
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
+                Row(
                   children: [
-                    const Icon(
-                      Icons.groups_outlined,
-                      size: 48,
-                      color: AppTheme.mutedForegroundColor,
+                    IconButton(
+                      icon: const Icon(Icons.refresh,
+                          color: AppTheme.primaryColor),
+                      onPressed: _carregarTurmas,
+                      tooltip: 'Atualizar turmas',
                     ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Você ainda não tem turmas',
-                      style: TextStyle(color: AppTheme.mutedForegroundColor),
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
+                    TextButton(
                       onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const NovaTurmaScreen(),
-                          ),
-                        );
+                        (context.findAncestorStateOfType<
+                                    _ProfessorHomeScreenState>()
+                                as _ProfessorHomeScreenState)
+                            // ignore: invalid_use_of_protected_member
+                            .setState(() {
+                          (context.findAncestorStateOfType<
+                                      _ProfessorHomeScreenState>()
+                                  as _ProfessorHomeScreenState)
+                              ._selectedIndex = 1;
+                        });
                       },
-                      child: const Text('Criar Turma'),
+                      child: const Text('Ver todas'),
                     ),
                   ],
                 ),
-              ),
-            )
-          else
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: minhasTurmas.length,
-              itemBuilder: (context, index) {
-                final turma = minhasTurmas[index];
-                return _buildTurmaCard(context, turma);
-              },
+              ],
             ),
+            const SizedBox(height: 8),
 
-          const SizedBox(height: 24),
-
-          // Atividades Recentes
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Atividades Recentes',
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              TextButton(
-                onPressed: () {
-                  (context.findAncestorStateOfType<_ProfessorHomeScreenState>()
-                          as _ProfessorHomeScreenState)
-                      // ignore: invalid_use_of_protected_member
-                      .setState(() {
-                    (context.findAncestorStateOfType<_ProfessorHomeScreenState>()
-                            as _ProfessorHomeScreenState)
-                        ._selectedIndex = 2;
-                  });
-                },
-                child: const Text('Ver todas'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: atividadesRecentes.length,
-            itemBuilder: (context, index) {
-              final atividade = atividadesRecentes[index];
-              return Card(
+            // Indicador de carregamento ou conteúdo
+            if (isLoading)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: CircularProgressIndicator(),
+                ),
+              )
+            else if (minhasTurmas.isEmpty)
+              Card(
+                color: AppTheme.mutedColor,
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            atividade['titulo'] as String,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: atividade['status'] == 'ativa'
-                                  ? AppTheme.successColor.withOpacity(0.2)
-                                  : AppTheme.mutedColor,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              atividade['status'] == 'ativa'
-                                  ? 'Ativa'
-                                  : 'Encerrada',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: atividade['status'] == 'ativa'
-                                    ? AppTheme.successColor
-                                    : AppTheme.mutedForegroundColor,
-                              ),
-                            ),
-                          ),
-                        ],
+                      const Icon(
+                        Icons.groups_outlined,
+                        size: 48,
+                        color: AppTheme.mutedForegroundColor,
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Entrega: ${atividade['dataEntrega']}',
-                        style: const TextStyle(
-                          color: AppTheme.mutedForegroundColor,
-                          fontSize: 14,
-                        ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Você ainda não tem turmas',
+                        style: TextStyle(color: AppTheme.mutedForegroundColor),
                       ),
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppTheme.primaryColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              '${atividade['pontuacao']} moedas',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppTheme.primaryColor,
-                              ),
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              // TODO: Implementar detalhes da atividade
-                            },
-                            child: const Text('Ver detalhes'),
-                          ),
-                        ],
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context)
+                              .push(
+                                MaterialPageRoute(
+                                  builder: (_) => const NovaTurmaScreen(),
+                                ),
+                              )
+                              .then((_) => _carregarTurmas());
+                        },
+                        child: const Text('Criar Turma'),
                       ),
                     ],
                   ),
                 ),
-              );
-            },
-          ),
-        ],
+              )
+            else
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: minhasTurmas.length,
+                itemBuilder: (context, index) {
+                  final turma = minhasTurmas[index];
+                  return _buildTurmaCard(context, turma);
+                },
+              ),
+
+            const SizedBox(height: 24),
+
+            // Atividades Recentes
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Atividades Recentes',
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
+                TextButton(
+                  onPressed: () {
+                    (context.findAncestorStateOfType<
+                                _ProfessorHomeScreenState>()
+                            as _ProfessorHomeScreenState)
+                        // ignore: invalid_use_of_protected_member
+                        .setState(() {
+                      (context.findAncestorStateOfType<
+                                  _ProfessorHomeScreenState>()
+                              as _ProfessorHomeScreenState)
+                          ._selectedIndex = 2;
+                    });
+                  },
+                  child: const Text('Ver todas'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: atividadesRecentes.length,
+              itemBuilder: (context, index) {
+                final atividade = atividadesRecentes[index];
+                return Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              atividade['titulo'] as String,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: atividade['status'] == 'ativa'
+                                    ? AppTheme.successColor.withOpacity(0.2)
+                                    : AppTheme.mutedColor,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                atividade['status'] == 'ativa'
+                                    ? 'Ativa'
+                                    : 'Encerrada',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: atividade['status'] == 'ativa'
+                                      ? AppTheme.successColor
+                                      : AppTheme.mutedForegroundColor,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Entrega: ${atividade['dataEntrega']}',
+                          style: const TextStyle(
+                            color: AppTheme.mutedForegroundColor,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                '${atividade['pontuacao']} moedas',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppTheme.primaryColor,
+                                ),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                // TODO: Implementar detalhes da atividade
+                              },
+                              child: const Text('Ver detalhes'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

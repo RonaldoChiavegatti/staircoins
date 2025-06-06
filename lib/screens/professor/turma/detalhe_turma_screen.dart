@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:staircoins/models/turma.dart';
 import 'package:staircoins/providers/turma_provider.dart';
+import 'package:staircoins/screens/professor/aluno/cadastro_aluno_screen.dart';
 import 'package:staircoins/theme/app_theme.dart';
 
 class DetalheTurmaScreen extends StatefulWidget {
@@ -17,7 +18,8 @@ class DetalheTurmaScreen extends StatefulWidget {
   State<DetalheTurmaScreen> createState() => _DetalheTurmaScreenState();
 }
 
-class _DetalheTurmaScreenState extends State<DetalheTurmaScreen> with SingleTickerProviderStateMixin {
+class _DetalheTurmaScreenState extends State<DetalheTurmaScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -162,69 +164,122 @@ class _DetalheTurmaScreenState extends State<DetalheTurmaScreen> with SingleTick
       {'id': '4', 'nome': 'João Santos', 'email': 'joao@exemplo.com'},
     ].where((aluno) => turma.alunos.contains(aluno['id'])).toList();
 
-    if (alunos.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.people_outline,
-              size: 64,
-              color: AppTheme.mutedForegroundColor,
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Nenhum aluno na turma',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+    return Column(
+      children: [
+        // Botões de ação
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Total: ${turma.alunos.length} alunos',
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Compartilhe o código da turma para que os alunos possam entrar',
-              style: TextStyle(
-                color: AppTheme.mutedForegroundColor,
+              Row(
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () => _compartilharTurma(turma),
+                    icon: const Icon(Icons.share),
+                    label: const Text('Compartilhar'),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: () => _cadastrarNovoAluno(turma),
+                    icon: const Icon(Icons.person_add),
+                    label: const Text('Cadastrar Aluno'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ],
               ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () => _compartilharTurma(turma),
-              icon: const Icon(Icons.share_outlined),
-              label: const Text('Compartilhar Código'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: alunos.length,
-      itemBuilder: (context, index) {
-        final aluno = alunos[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 8),
-          child: ListTile(
-            leading: const CircleAvatar(
-              backgroundColor: AppTheme.mutedColor,
-              child: Icon(
-                Icons.person_outline,
-                color: AppTheme.mutedForegroundColor,
-              ),
-            ),
-            title: Text(aluno['nome']!),
-            subtitle: Text(aluno['email']!),
-            trailing: IconButton(
-              icon: const Icon(Icons.more_vert),
-              onPressed: () {
-                // TODO: Implementar menu de opções
-              },
-            ),
+            ],
           ),
-        );
-      },
+        ),
+
+        // Lista de alunos
+        Expanded(
+          child: alunos.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.people_outline,
+                        size: 64,
+                        color: AppTheme.mutedForegroundColor,
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Nenhum aluno na turma',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Compartilhe o código da turma para que os alunos possam entrar',
+                        style: TextStyle(
+                          color: AppTheme.mutedForegroundColor,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          ElevatedButton.icon(
+                            onPressed: () => _compartilharTurma(turma),
+                            icon: const Icon(Icons.share_outlined),
+                            label: const Text('Compartilhar Código'),
+                          ),
+                          const SizedBox(width: 16),
+                          ElevatedButton.icon(
+                            onPressed: () => _cadastrarNovoAluno(turma),
+                            icon: const Icon(Icons.person_add),
+                            label: const Text('Cadastrar Aluno'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primaryColor,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: alunos.length,
+                  itemBuilder: (context, index) {
+                    final aluno = alunos[index];
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        leading: const CircleAvatar(
+                          backgroundColor: AppTheme.mutedColor,
+                          child: Icon(
+                            Icons.person_outline,
+                            color: AppTheme.mutedForegroundColor,
+                          ),
+                        ),
+                        title: Text(aluno['nome']!),
+                        subtitle: Text(aluno['email']!),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.more_vert),
+                          onPressed: () {
+                            // TODO: Implementar menu de opções
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 
@@ -387,7 +442,23 @@ class _DetalheTurmaScreenState extends State<DetalheTurmaScreen> with SingleTick
   }
 
   void _compartilharTurma(Turma turma) {
-    final texto = 'Entre na minha turma "${turma.nome}" no StairCoins usando o código: ${turma.codigo}';
+    final texto =
+        'Entre na minha turma "${turma.nome}" no StairCoins usando o código: ${turma.codigo}';
     Share.share(texto);
+  }
+
+  void _cadastrarNovoAluno(Turma turma) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CadastroAlunoScreen(
+          turmaIdsPreSelecionadas: [turma.id],
+        ),
+      ),
+    ).then((_) {
+      // Recarregar dados da turma após cadastro
+      final turmaProvider = Provider.of<TurmaProvider>(context, listen: false);
+      turmaProvider.recarregarTurmas();
+    });
   }
 }

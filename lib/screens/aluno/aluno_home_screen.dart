@@ -73,15 +73,124 @@ class _AlunoHomeScreenState extends State<AlunoHomeScreen> {
   }
 }
 
-class AlunoDashboardScreen extends StatelessWidget {
+class AlunoDashboardScreen extends StatefulWidget {
   const AlunoDashboardScreen({super.key});
+
+  @override
+  State<AlunoDashboardScreen> createState() => _AlunoDashboardScreenState();
+}
+
+class _AlunoDashboardScreenState extends State<AlunoDashboardScreen> {
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Recarregar turmas quando a tela for exibida
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _carregarTurmas();
+    });
+  }
+
+  Future<void> _carregarTurmas() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final turmaProvider = Provider.of<TurmaProvider>(context, listen: false);
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+      if (authProvider.isAuthenticated) {
+        final user = authProvider.user;
+        debugPrint(
+            'AlunoDashboardScreen: Carregando turmas para o aluno: ${user?.id}');
+        debugPrint(
+            'AlunoDashboardScreen: Turmas associadas ao usuário: ${user?.turmas}');
+
+        if (user != null && user.turmas.isNotEmpty) {
+          debugPrint(
+              'AlunoDashboardScreen: Aluno tem ${user.turmas.length} turmas associadas: ${user.turmas}');
+
+          // Primeiro recarregar todas as turmas para garantir dados atualizados
+          await turmaProvider.recarregarTurmas();
+
+          // Depois buscar especificamente as turmas do usuário
+          await turmaProvider.buscarTurmasPorIds(user.turmas);
+
+          // Verificar se as turmas foram carregadas corretamente
+          final turmasCarregadas = turmaProvider.getTurmasAluno();
+          debugPrint(
+              'AlunoDashboardScreen: Turmas carregadas: ${turmasCarregadas.length}');
+
+          // Listar as turmas carregadas
+          for (var turma in turmasCarregadas) {
+            debugPrint(
+                'AlunoDashboardScreen: Turma carregada: ${turma.id} - ${turma.nome} - ${turma.codigo}');
+          }
+
+          // Verificar todas as turmas disponíveis
+          final todasTurmas = turmaProvider.turmas;
+          debugPrint(
+              'AlunoDashboardScreen: Total de turmas disponíveis: ${todasTurmas.length}');
+          for (var turma in todasTurmas) {
+            debugPrint(
+                'AlunoDashboardScreen: Turma disponível: ${turma.id} - ${turma.nome} - ${turma.codigo}');
+          }
+
+          // Verificar se todas as turmas do usuário foram carregadas
+          final turmasNaoCarregadas = user.turmas
+              .where((turmaId) => !turmasCarregadas.any((t) => t.id == turmaId))
+              .toList();
+
+          if (turmasNaoCarregadas.isNotEmpty) {
+            debugPrint(
+                'AlunoDashboardScreen: Algumas turmas não foram carregadas: $turmasNaoCarregadas');
+
+            // Usar o método de atualização forçada para garantir que todas as turmas sejam carregadas
+            debugPrint(
+                'AlunoDashboardScreen: Iniciando atualização forçada das turmas');
+            await turmaProvider.forcarAtualizacaoTurmasAluno();
+
+            // Verificar novamente
+            final turmasAtualizadas = turmaProvider.getTurmasAluno();
+            debugPrint(
+                'AlunoDashboardScreen: Turmas após atualização forçada: ${turmasAtualizadas.length}');
+          }
+        } else {
+          debugPrint(
+              'AlunoDashboardScreen: Aluno não tem turmas associadas, recarregando todas');
+          await turmaProvider.recarregarTurmas();
+        }
+
+        // Verificar as turmas carregadas
+        final turmasAluno = turmaProvider.getTurmasAluno();
+        debugPrint(
+            'AlunoDashboardScreen: Turmas carregadas: ${turmasAluno.length}');
+
+        // Listar as turmas carregadas para debug
+        for (var turma in turmasAluno) {
+          debugPrint(
+              'AlunoDashboardScreen: Turma carregada: ${turma.id} - ${turma.nome} - ${turma.codigo}');
+        }
+      }
+    } catch (e) {
+      debugPrint('AlunoDashboardScreen: Erro ao carregar turmas: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final turmaProvider = Provider.of<TurmaProvider>(context);
     final user = authProvider.user;
-    final minhasTurmas = turmaProvider.getMinhasTurmas();
+    final minhasTurmas = turmaProvider.getTurmasAluno();
     final coins = user?.staircoins ?? 0;
 
     // Próxima meta (simulação)
@@ -123,412 +232,438 @@ class AlunoDashboardScreen extends StatelessWidget {
       },
     ];
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Saudação
-          Text(
-            'Olá, ${user?.name}!',
-            style: Theme.of(context).textTheme.displayMedium,
-          ),
-          const Text(
-            'Bem-vindo ao seu painel',
-            style: TextStyle(color: AppTheme.mutedForegroundColor),
-          ),
-          const SizedBox(height: 24),
-
-          // Card de saldo
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: AppTheme.primaryGradient,
-              borderRadius: BorderRadius.circular(16),
+    return RefreshIndicator(
+      onRefresh: _carregarTurmas,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Saudação
+            Text(
+              'Olá, ${user?.name}!',
+              style: Theme.of(context).textTheme.displayMedium,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            const Text(
+              'Bem-vindo ao seu painel',
+              style: TextStyle(color: AppTheme.mutedForegroundColor),
+            ),
+            const SizedBox(height: 24),
+
+            // Card de saldo
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: AppTheme.primaryGradient,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        '$coins',
+                        style: const TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(
+                        Icons.star,
+                        color: AppTheme.warningColor,
+                        size: 28,
+                      ),
+                    ],
+                  ),
+                  const Text(
+                    'moedas disponíveis',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Próxima meta: 200 moedas',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                        ),
+                      ),
+                      Text(
+                        '$coins/200',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: progressoMeta / 100,
+                      backgroundColor: Colors.white.withOpacity(0.2),
+                      valueColor:
+                          const AlwaysStoppedAnimation<Color>(Colors.white),
+                      minHeight: 8,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Minhas Turmas
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                Text(
+                  'Minhas Turmas',
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
                 Row(
                   children: [
-                    Text(
-                      '$coins',
-                      style: const TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                    if (_isLoading)
+                      const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Icon(
-                      Icons.star,
-                      color: AppTheme.warningColor,
-                      size: 28,
+                    TextButton(
+                      onPressed: () {
+                        final homeState = context
+                            .findAncestorStateOfType<_AlunoHomeScreenState>();
+                        if (homeState != null) {
+                          homeState.setState(() {
+                            homeState._selectedIndex = 1;
+                          });
+                        }
+                      },
+                      child: const Text('Ver todas'),
                     ),
                   ],
-                ),
-                const Text(
-                  'moedas disponíveis',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Próxima meta: 200 moedas',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                      ),
-                    ),
-                    Text(
-                      '$coins/200',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: progressoMeta / 100,
-                    backgroundColor: Colors.white.withOpacity(0.2),
-                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-                    minHeight: 8,
-                  ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 24),
+            const SizedBox(height: 8),
 
-          // Minhas Turmas
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Minhas Turmas',
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              TextButton(
-                onPressed: () {
-                  final homeState = context.findAncestorStateOfType<_AlunoHomeScreenState>();
-                  if (homeState != null) {
-                    homeState.setState(() {
-                      homeState._selectedIndex = 1;
-                    });
-                  }
-                },
-                child: const Text('Ver todas'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-
-          if (minhasTurmas.isEmpty)
-            Card(
-              color: AppTheme.mutedColor,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.groups_outlined,
-                      size: 48,
-                      color: AppTheme.mutedForegroundColor,
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Você ainda não está em nenhuma turma',
-                      style: TextStyle(color: AppTheme.mutedForegroundColor),
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const EntrarTurmaScreen(),
-                          ),
-                        );
-                      },
-                      child: const Text('Entrar em uma Turma'),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: minhasTurmas.length,
-              itemBuilder: (context, index) {
-                final turma = minhasTurmas[index];
-                return _buildTurmaCard(context, turma);
-              },
-            ),
-
-          const SizedBox(height: 24),
-
-          // Atividades Pendentes
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Atividades Pendentes',
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              TextButton(
-                onPressed: () {
-                  final homeState = context.findAncestorStateOfType<_AlunoHomeScreenState>();
-                  if (homeState != null) {
-                    homeState.setState(() {
-                      homeState._selectedIndex = 2;
-                    });
-                  }
-                },
-                child: const Text('Ver todas'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-
-          if (atividadesPendentes.isEmpty)
-            const Card(
-              color: AppTheme.mutedColor,
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.assignment_outlined,
-                      size: 48,
-                      color: AppTheme.mutedForegroundColor,
-                    ),
-                    SizedBox(height: 16),
-                    Text(
-                      'Você não tem atividades pendentes no momento',
-                      style: TextStyle(color: AppTheme.mutedForegroundColor),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: atividadesPendentes.length,
-              itemBuilder: (context, index) {
-                final atividade = atividadesPendentes[index];
-                return Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                atividade['titulo'] as String,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppTheme.warningColor.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Row(
-                                children: [
-                                  Icon(
-                                    Icons.access_time,
-                                    size: 12,
-                                    color: AppTheme.warningColor,
-                                  ),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    'Pendente',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: AppTheme.warningColor,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Entrega: ${atividade['dataEntrega']}',
-                          style: const TextStyle(
-                            color: AppTheme.mutedForegroundColor,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppTheme.primaryColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            '${atividade['pontuacao']} moedas',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppTheme.primaryColor,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-
-          const SizedBox(height: 24),
-
-          // Produtos em Destaque
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Produtos em Destaque',
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              TextButton(
-                onPressed: () {
-                  final homeState = context.findAncestorStateOfType<_AlunoHomeScreenState>();
-                  if (homeState != null) {
-                    homeState.setState(() {
-                      homeState._selectedIndex = 3;
-                    });
-                  }
-                },
-                child: const Text('Ver todas'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 0.75,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-            ),
-            itemCount: produtosDestaque.length,
-            itemBuilder: (context, index) {
-              final produto = produtosDestaque[index];
-              final temSaldo = coins >= (produto['preco'] as int);
-
-              return Card(
-                clipBehavior: Clip.antiAlias,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Imagem
-                    Expanded(
-                      child: Container(
-                        width: double.infinity,
-                        color: AppTheme.mutedColor,
-                        child: const Center(
-                          child: Icon(
-                            Icons.image_outlined,
-                            size: 48,
-                            color: AppTheme.mutedForegroundColor,
-                          ),
-                        ),
+            if (minhasTurmas.isEmpty)
+              Card(
+                color: AppTheme.mutedColor,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.groups_outlined,
+                        size: 48,
+                        color: AppTheme.mutedForegroundColor,
                       ),
-                    ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Você ainda não está em nenhuma turma',
+                        style: TextStyle(color: AppTheme.mutedForegroundColor),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context)
+                              .push(
+                                MaterialPageRoute(
+                                  builder: (_) => const EntrarTurmaScreen(),
+                                ),
+                              )
+                              .then((_) => _carregarTurmas());
+                        },
+                        child: const Text('Entrar em uma Turma'),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: minhasTurmas.length > 3 ? 3 : minhasTurmas.length,
+                itemBuilder: (context, index) {
+                  final turma = minhasTurmas[index];
+                  return _buildTurmaCard(context, turma);
+                },
+              ),
 
-                    // Informações
-                    Padding(
-                      padding: const EdgeInsets.all(12),
+            const SizedBox(height: 24),
+
+            // Atividades Pendentes
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Atividades Pendentes',
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
+                TextButton(
+                  onPressed: () {
+                    final homeState = context
+                        .findAncestorStateOfType<_AlunoHomeScreenState>();
+                    if (homeState != null) {
+                      homeState.setState(() {
+                        homeState._selectedIndex = 2;
+                      });
+                    }
+                  },
+                  child: const Text('Ver todas'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            if (atividadesPendentes.isEmpty)
+              const Card(
+                color: AppTheme.mutedColor,
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.assignment_outlined,
+                        size: 48,
+                        color: AppTheme.mutedForegroundColor,
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        'Você não tem atividades pendentes no momento',
+                        style: TextStyle(color: AppTheme.mutedForegroundColor),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: atividadesPendentes.length,
+                itemBuilder: (context, index) {
+                  final atividade = atividadesPendentes[index];
+                  return Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            produto['nome'] as String,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 4),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                '${produto['preco']} 🪙',
-                                style: const TextStyle(
-                                  color: AppTheme.primaryColor,
-                                  fontWeight: FontWeight.bold,
+                              Expanded(
+                                child: Text(
+                                  atividade['titulo'] as String,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
                                 ),
                               ),
-                              Text(
-                                temSaldo ? 'Disponível' : 'Faltam ${(produto['preco'] as int) - coins}',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: temSaldo ? AppTheme.successColor : AppTheme.mutedForegroundColor,
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.warningColor.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Row(
+                                  children: [
+                                    Icon(
+                                      Icons.access_time,
+                                      size: 12,
+                                      color: AppTheme.warningColor,
+                                    ),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Pendente',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: AppTheme.warningColor,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 8),
-                          ElevatedButton(
-                            onPressed: temSaldo
-                                ? () {
-                                    // TODO: Implementar troca de produto
-                                  }
-                                : null,
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 0,
-                                vertical: 0,
+                          Text(
+                            'Entrega: ${atividade['dataEntrega']}',
+                            style: const TextStyle(
+                              color: AppTheme.mutedForegroundColor,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '${atividade['pontuacao']} moedas',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.primaryColor,
                               ),
                             ),
-                            child: Text(temSaldo ? 'Trocar' : 'Moedas insuficientes'),
                           ),
                         ],
                       ),
                     ),
-                  ],
+                  );
+                },
+              ),
+
+            const SizedBox(height: 24),
+
+            // Produtos em Destaque
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Produtos em Destaque',
+                  style: Theme.of(context).textTheme.headlineMedium,
                 ),
-              );
-            },
-          ),
-        ],
+                TextButton(
+                  onPressed: () {
+                    final homeState = context
+                        .findAncestorStateOfType<_AlunoHomeScreenState>();
+                    if (homeState != null) {
+                      homeState.setState(() {
+                        homeState._selectedIndex = 3;
+                      });
+                    }
+                  },
+                  child: const Text('Ver todas'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 0.75,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+              ),
+              itemCount: produtosDestaque.length,
+              itemBuilder: (context, index) {
+                final produto = produtosDestaque[index];
+                final temSaldo = coins >= (produto['preco'] as int);
+
+                return Card(
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Imagem
+                      Expanded(
+                        child: Container(
+                          width: double.infinity,
+                          color: AppTheme.mutedColor,
+                          child: const Center(
+                            child: Icon(
+                              Icons.image_outlined,
+                              size: 48,
+                              color: AppTheme.mutedForegroundColor,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // Informações
+                      Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              produto['nome'] as String,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  '${produto['preco']} 🪙',
+                                  style: const TextStyle(
+                                    color: AppTheme.primaryColor,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  temSaldo
+                                      ? 'Disponível'
+                                      : 'Faltam ${(produto['preco'] as int) - coins}',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: temSaldo
+                                        ? AppTheme.successColor
+                                        : AppTheme.mutedForegroundColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            ElevatedButton(
+                              onPressed: temSaldo
+                                  ? () {
+                                      // TODO: Implementar troca de produto
+                                    }
+                                  : null,
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 0,
+                                  vertical: 0,
+                                ),
+                              ),
+                              child: Text(
+                                  temSaldo ? 'Trocar' : 'Moedas insuficientes'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

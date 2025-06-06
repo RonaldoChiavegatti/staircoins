@@ -5,6 +5,7 @@ import 'package:staircoins/screens/aluno/aluno_home_screen.dart';
 import 'package:staircoins/screens/auth/cadastro_screen.dart';
 import 'package:staircoins/screens/professor/professor_home_screen.dart';
 import 'package:staircoins/theme/app_theme.dart';
+import 'package:staircoins/providers/turma_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -36,12 +37,17 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      await authProvider.login(
+      final success = await authProvider.login(
         _emailController.text.trim(),
         _passwordController.text,
       );
 
-      if (context.mounted) {
+      if (context.mounted && success) {
+        // Inicializar o TurmaProvider após o login bem-sucedido
+        final turmaProvider =
+            Provider.of<TurmaProvider>(context, listen: false);
+        await turmaProvider.init();
+
         final user = authProvider.user;
         final route = MaterialPageRoute(
           builder: (_) => user?.tipo == 'professor'
@@ -49,6 +55,14 @@ class _LoginScreenState extends State<LoginScreen> {
               : const AlunoHomeScreen(),
         );
         Navigator.pushReplacement(context, route);
+      } else if (context.mounted) {
+        // Exibir mensagem de erro se o login falhar
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Falha no login. Verifique suas credenciais.'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } catch (e) {
       if (context.mounted) {
@@ -244,4 +258,4 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
-} 
+}

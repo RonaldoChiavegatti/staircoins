@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:staircoins/providers/turma_provider.dart';
 import 'package:staircoins/theme/app_theme.dart';
 import 'package:staircoins/widgets/gradient_button.dart';
+import 'package:staircoins/providers/auth_provider.dart';
 
 class NovaTurmaScreen extends StatefulWidget {
   const NovaTurmaScreen({super.key});
@@ -36,16 +37,44 @@ class _NovaTurmaScreenState extends State<NovaTurmaScreen> {
     });
 
     try {
+      debugPrint('NovaTurmaScreen: Criando turma...');
       final turmaProvider = Provider.of<TurmaProvider>(context, listen: false);
-      await turmaProvider.adicionarTurma(
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+      final success = await turmaProvider.adicionarTurma(
         _nomeController.text.trim(),
         _descricaoController.text.trim(),
         _codigoController.text.trim().toUpperCase(),
       );
 
       if (!mounted) return;
-      Navigator.of(context).pop();
+
+      if (success) {
+        debugPrint('NovaTurmaScreen: Turma criada com sucesso');
+
+        // Verificar se o usuário tem turmas associadas
+        final user = authProvider.user;
+        if (user != null && user.turmas.isNotEmpty) {
+          debugPrint(
+              'NovaTurmaScreen: Carregando turmas do usuário: ${user.turmas}');
+          // Buscar turmas pelos IDs associados ao usuário
+          await turmaProvider.buscarTurmasPorIds(user.turmas);
+        } else {
+          // Recarregar turmas para garantir que a nova turma seja exibida
+          debugPrint('NovaTurmaScreen: Recarregando todas as turmas');
+          await turmaProvider.recarregarTurmas();
+        }
+
+        Navigator.of(context).pop();
+      } else {
+        debugPrint(
+            'NovaTurmaScreen: Erro ao criar turma: ${turmaProvider.errorMessage}');
+        setState(() {
+          _errorMessage = turmaProvider.errorMessage ?? 'Erro ao criar turma';
+        });
+      }
     } catch (e) {
+      debugPrint('NovaTurmaScreen: Exceção ao criar turma: $e');
       setState(() {
         _errorMessage = e.toString();
       });

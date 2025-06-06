@@ -6,7 +6,7 @@ import 'package:staircoins/models/user.dart';
 
 class AuthProvider with ChangeNotifier {
   final AuthRepository authRepository;
-  
+
   User? _user;
   bool _isLoading = false;
   String? _errorMessage;
@@ -50,22 +50,19 @@ class AuthProvider with ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       final userData = prefs.getString('staircoins_user');
-      
+
       if (userData != null) {
         _user = User.fromJson(json.decode(userData));
       } else {
         // Tenta recuperar usuário do Firebase
         final result = await authRepository.getCurrentUser();
-        result.fold(
-          (failure) => _errorMessage = failure.message,
-          (user) {
-            if (user != null) {
-              _user = user;
-              // Salva no storage
-              prefs.setString('staircoins_user', json.encode(user.toJson()));
-            }
+        result.fold((failure) => _errorMessage = failure.message, (user) {
+          if (user != null) {
+            _user = user;
+            // Salva no storage
+            prefs.setString('staircoins_user', json.encode(user.toJson()));
           }
-        );
+        });
       }
     } catch (e) {
       debugPrint('Erro ao carregar usuário: $e');
@@ -83,22 +80,19 @@ class AuthProvider with ChangeNotifier {
 
     try {
       final result = await authRepository.login(email, password);
-      
-      return result.fold(
-        (failure) {
-          _errorMessage = failure.message;
-          return false;
-        },
-        (user) async {
-          _user = user;
-          
-          // Salva no storage
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('staircoins_user', json.encode(user.toJson()));
-          
-          return true;
-        }
-      );
+
+      return result.fold((failure) {
+        _errorMessage = failure.message;
+        return false;
+      }, (user) async {
+        _user = user;
+
+        // Salva no storage
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('staircoins_user', json.encode(user.toJson()));
+
+        return true;
+      });
     } catch (e) {
       _errorMessage = e.toString();
       return false;
@@ -108,29 +102,59 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> register(String name, String email, String password, UserType type) async {
+  Future<bool> register(
+      String name, String email, String password, UserType type) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
       final result = await authRepository.register(name, email, password, type);
-      
-      return result.fold(
-        (failure) {
-          _errorMessage = failure.message;
-          return false;
-        },
-        (user) async {
-          _user = user;
-          
-          // Salva no storage
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('staircoins_user', json.encode(user.toJson()));
-          
-          return true;
-        }
-      );
+
+      return result.fold((failure) {
+        _errorMessage = failure.message;
+        return false;
+      }, (user) async {
+        _user = user;
+
+        // Salva no storage
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('staircoins_user', json.encode(user.toJson()));
+
+        return true;
+      });
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> registerStudent(
+      String name, String email, String password, List<String> turmaIds) async {
+    if (!isProfessor) {
+      _errorMessage = 'Apenas professores podem cadastrar alunos';
+      return false;
+    }
+
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final result =
+          await authRepository.registerStudent(name, email, password, turmaIds);
+
+      return result.fold((failure) {
+        _errorMessage = failure.message;
+        return false;
+      }, (user) {
+        // Não armazenamos o aluno cadastrado como usuário atual
+        // apenas retornamos sucesso
+        return true;
+      });
     } catch (e) {
       _errorMessage = e.toString();
       return false;
@@ -147,22 +171,19 @@ class AuthProvider with ChangeNotifier {
 
     try {
       final result = await authRepository.logout();
-      
-      return result.fold(
-        (failure) {
-          _errorMessage = failure.message;
-          return false;
-        },
-        (_) async {
-          _user = null;
-          
-          // Remove do storage
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.remove('staircoins_user');
-          
-          return true;
-        }
-      );
+
+      return result.fold((failure) {
+        _errorMessage = failure.message;
+        return false;
+      }, (_) async {
+        _user = null;
+
+        // Remove do storage
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('staircoins_user');
+
+        return true;
+      });
     } catch (e) {
       _errorMessage = e.toString();
       return false;
@@ -179,22 +200,19 @@ class AuthProvider with ChangeNotifier {
 
     try {
       final result = await authRepository.updateUser(updatedUser);
-      
-      return result.fold(
-        (failure) {
-          _errorMessage = failure.message;
-          return false;
-        },
-        (user) async {
-          _user = user;
-          
-          // Atualiza no storage
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('staircoins_user', json.encode(user.toJson()));
-          
-          return true;
-        }
-      );
+
+      return result.fold((failure) {
+        _errorMessage = failure.message;
+        return false;
+      }, (user) async {
+        _user = user;
+
+        // Atualiza no storage
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('staircoins_user', json.encode(user.toJson()));
+
+        return true;
+      });
     } catch (e) {
       _errorMessage = e.toString();
       return false;
@@ -206,57 +224,78 @@ class AuthProvider with ChangeNotifier {
 
   Future<bool> updateStaircoins(int amount) async {
     if (_user == null) return false;
-    
+
     try {
       final result = await authRepository.updateStaircoins(_user!.id, amount);
-      
-      return result.fold(
-        (failure) {
-          _errorMessage = failure.message;
-          return false;
-        },
-        (updatedUser) {
-          _user = updatedUser;
-          
-          // Atualiza no storage
-          SharedPreferences.getInstance().then((prefs) {
-            prefs.setString('staircoins_user', json.encode(updatedUser.toJson()));
-          });
-          
-          notifyListeners();
-          return true;
-        }
-      );
+
+      return result.fold((failure) {
+        _errorMessage = failure.message;
+        return false;
+      }, (updatedUser) {
+        _user = updatedUser;
+
+        // Atualiza no storage
+        SharedPreferences.getInstance().then((prefs) {
+          prefs.setString('staircoins_user', json.encode(updatedUser.toJson()));
+        });
+
+        notifyListeners();
+        return true;
+      });
     } catch (e) {
       _errorMessage = e.toString();
       return false;
     }
   }
-  
+
   Future<bool> addTurmaToUser(String turmaId) async {
-    if (_user == null) return false;
-    
+    if (!isAuthenticated || _user == null) return false;
+
     try {
-      final result = await authRepository.addTurmaToUser(_user!.id, turmaId);
-      
+      debugPrint(
+          'AuthProvider: Adicionando turma $turmaId ao usuário ${_user!.id}');
+
+      // Verificar se a turma já está na lista do usuário
+      if (_user!.turmas.contains(turmaId)) {
+        debugPrint('AuthProvider: Turma já está na lista do usuário');
+        return true; // Já está adicionada, consideramos sucesso
+      }
+
+      // Criar uma nova lista de turmas incluindo a nova
+      final turmasAtualizadas = List<String>.from(_user!.turmas);
+      turmasAtualizadas.add(turmaId);
+
+      debugPrint(
+          'AuthProvider: Turmas antes: ${_user!.turmas.length}, depois: ${turmasAtualizadas.length}');
+
+      // Atualizar o usuário com a nova lista de turmas
+      final updatedUser = _user!.copyWith(turmas: turmasAtualizadas);
+
+      // Chamar o repositório para atualizar o usuário no Firebase
+      final result = await authRepository.updateUser(updatedUser);
+
       return result.fold(
         (failure) {
+          debugPrint(
+              'AuthProvider: Erro ao adicionar turma: ${failure.message}');
           _errorMessage = failure.message;
           return false;
         },
-        (updatedUser) {
-          _user = updatedUser;
-          
+        (user) {
+          debugPrint('AuthProvider: Turma adicionada com sucesso');
+          _user = user;
+
           // Atualiza no storage
           SharedPreferences.getInstance().then((prefs) {
-            prefs.setString('staircoins_user', json.encode(updatedUser.toJson()));
+            prefs.setString('staircoins_user', json.encode(user.toJson()));
           });
-          
+
           notifyListeners();
           return true;
-        }
+        },
       );
     } catch (e) {
+      debugPrint('AuthProvider: Exceção ao adicionar turma: $e');
       _errorMessage = e.toString();
       return false;
     }

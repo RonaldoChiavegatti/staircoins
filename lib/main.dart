@@ -14,15 +14,15 @@ import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Inicializar Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  
+
   // Inicializar injeção de dependências
   await di.init();
-  
+
   runApp(const MyApp());
 }
 
@@ -38,7 +38,16 @@ class MyApp extends StatelessWidget {
         ),
         ChangeNotifierProxyProvider<AuthProvider, TurmaProvider>(
           create: (_) => di.sl<TurmaProvider>(),
-          update: (_, auth, __) => di.sl<TurmaProvider>()..recarregarTurmas(),
+          update: (_, auth, previousTurmaProvider) {
+            final turmaProvider =
+                previousTurmaProvider ?? di.sl<TurmaProvider>();
+            // Só recarregar as turmas se o usuário estiver autenticado
+            if (auth.isAuthenticated) {
+              // Usar Future.microtask para não bloquear a UI
+              Future.microtask(() => turmaProvider.init());
+            }
+            return turmaProvider;
+          },
         ),
         ChangeNotifierProvider(create: (_) => ProdutoProvider()),
       ],
@@ -67,16 +76,18 @@ class LoginScreenWithSeed extends StatelessWidget {
             onPressed: () async {
               try {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Inicializando Firebase com dados de teste...')),
+                  const SnackBar(
+                      content:
+                          Text('Inicializando Firebase com dados de teste...')),
                 );
-                
+
                 final seed = FirebaseSeed(
                   firestore: FirebaseFirestore.instance,
                   auth: firebase_auth.FirebaseAuth.instance,
                 );
-                
+
                 await seed.seed();
-                
+
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
