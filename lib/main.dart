@@ -13,6 +13,8 @@ import 'package:staircoins/scripts/firebase_seed.dart';
 import 'package:staircoins/theme/app_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:staircoins/data/datasources/firebase_produto_datasource.dart';
+import 'package:staircoins/data/repositories/firebase_produto_repository_impl.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -60,7 +62,11 @@ class MyApp extends StatelessWidget {
 
         // Produto Provider
         ChangeNotifierProvider(
-          create: (_) => ProdutoProvider(),
+          create: (_) => ProdutoProvider(
+            FirebaseProdutoRepositoryImpl(
+              FirebaseProdutoDatasource(FirebaseFirestore.instance),
+            ),
+          ),
         ),
 
         // Atividade Provider

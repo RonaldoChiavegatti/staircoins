@@ -303,4 +303,16 @@ class AuthProvider with ChangeNotifier {
       return false;
     }
   }
+
+  Future<void> reloadUserFromFirebase() async {
+    final result = await authRepository.getCurrentUser();
+    result.fold((failure) => null, (user) async {
+      if (user != null) {
+        _user = user;
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('staircoins_user', json.encode(user.toJson()));
+        notifyListeners();
+      }
+    });
+  }
 }

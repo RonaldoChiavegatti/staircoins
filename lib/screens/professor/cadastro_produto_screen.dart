@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:staircoins/providers/produto_provider.dart';
 import 'package:staircoins/theme/app_theme.dart';
+import 'package:staircoins/models/produto.dart';
 
 class CadastroProdutoScreen extends StatefulWidget {
-  const CadastroProdutoScreen({super.key});
+  final Produto? produto;
+  const CadastroProdutoScreen({super.key, this.produto});
 
   @override
   State<CadastroProdutoScreen> createState() => _CadastroProdutoScreenState();
@@ -16,6 +18,19 @@ class _CadastroProdutoScreenState extends State<CadastroProdutoScreen> {
   final _descricaoController = TextEditingController();
   final _precoController = TextEditingController();
   final _quantidadeController = TextEditingController();
+  final _pesoTamanhoController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.produto != null) {
+      _nomeController.text = widget.produto!.nome;
+      _descricaoController.text = widget.produto!.descricao;
+      _precoController.text = widget.produto!.preco.toString();
+      _quantidadeController.text = widget.produto!.quantidade.toString();
+      _pesoTamanhoController.text = widget.produto!.pesoTamanho ?? '';
+    }
+  }
 
   @override
   void dispose() {
@@ -23,26 +38,37 @@ class _CadastroProdutoScreenState extends State<CadastroProdutoScreen> {
     _descricaoController.dispose();
     _precoController.dispose();
     _quantidadeController.dispose();
+    _pesoTamanhoController.dispose();
     super.dispose();
   }
 
   void _salvarProduto() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
-
       try {
-        await Provider.of<ProdutoProvider>(context, listen: false)
-            .adicionarProduto(
-          nome: _nomeController.text,
-          descricao: _descricaoController.text,
-          preco: int.parse(_precoController.text),
-          quantidade: int.parse(_quantidadeController.text),
-        );
-
+        if (widget.produto == null) {
+          await Provider.of<ProdutoProvider>(context, listen: false)
+              .adicionarProduto(
+            nome: _nomeController.text,
+            descricao: _descricaoController.text,
+            preco: int.parse(_precoController.text),
+            quantidade: int.parse(_quantidadeController.text),
+            pesoTamanho: _pesoTamanhoController.text,
+          );
+        } else {
+          final produtoEditado = widget.produto!.copyWith(
+            nome: _nomeController.text,
+            descricao: _descricaoController.text,
+            preco: int.parse(_precoController.text),
+            quantidade: int.parse(_quantidadeController.text),
+            pesoTamanho: _pesoTamanhoController.text,
+          );
+          await Provider.of<ProdutoProvider>(context, listen: false)
+              .editarProduto(produtoEditado);
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Produto salvo com sucesso!')),
         );
-
         Navigator.of(context).pop();
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -133,6 +159,22 @@ class _CadastroProdutoScreenState extends State<CadastroProdutoScreen> {
                   }
                   if (int.tryParse(value) == null || int.parse(value) < 0) {
                     return 'Por favor, insira uma quantidade válida';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _pesoTamanhoController,
+                decoration: InputDecoration(
+                  labelText: 'Peso/Tamanho',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Por favor, insira o peso ou tamanho do produto';
                   }
                   return null;
                 },

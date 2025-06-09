@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 import 'package:internet_connection_checker/internet_connection_checker.dart';
 
@@ -18,12 +16,12 @@ class NetworkInfoImpl implements NetworkInfo {
     if (kIsWeb) {
       return true;
     }
-    
+
     // Em plataformas móveis, usa o InternetConnectionChecker
     if (connectionChecker != null) {
       return await connectionChecker!.hasConnection;
     }
-    
+
     return true;
   }
-} 
+}
