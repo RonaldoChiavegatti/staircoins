@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:staircoins/core/utils/app_restart.dart';
+import 'package:staircoins/providers/atividade_provider.dart';
 import 'package:staircoins/providers/auth_provider.dart';
+import 'package:staircoins/providers/produto_provider.dart';
+import 'package:staircoins/providers/turma_provider.dart';
 import 'package:staircoins/screens/auth/login_screen.dart';
+import 'package:staircoins/screens/splash_screen.dart';
 import 'package:staircoins/theme/app_theme.dart';
 import 'package:staircoins/screens/professor/professor_configuracoes_screen.dart';
 
@@ -66,9 +71,11 @@ class AppDrawer extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.settings),
             title: const Text('Configurações'),
-            onTap: () { Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ProfessorConfiguracoesScreen()));
+            onTap: () {
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const ProfessorConfiguracoesScreen()));
             },
           ),
           const Spacer(),
@@ -79,13 +86,55 @@ class AppDrawer extends StatelessWidget {
               style: TextStyle(color: Colors.red),
             ),
             onTap: () async {
-              await authProvider.logout();
-              if (context.mounted) {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                  (route) => false,
-                );
+              // Mostrar indicador de carregamento
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (BuildContext context) {
+                  return const Center(
+                    child: CircularProgressIndicator(),
+                  );
+                },
+              );
+
+              try {
+                // Fazer logout
+                await authProvider.logout();
+
+                // Limpar dados de todos os providers
+                if (context.mounted) {
+                  // Limpar TurmaProvider
+                  final turmaProvider =
+                      Provider.of<TurmaProvider>(context, listen: false);
+                  turmaProvider.limparDados();
+
+                  // Limpar AtividadeProvider
+                  final atividadeProvider =
+                      Provider.of<AtividadeProvider>(context, listen: false);
+                  atividadeProvider.limparDados();
+
+                  // Limpar ProdutoProvider
+                  final produtoProvider =
+                      Provider.of<ProdutoProvider>(context, listen: false);
+                  produtoProvider.limparDados();
+
+                  // Fechar o diálogo de carregamento
+                  Navigator.of(context).pop();
+
+                  // Reiniciar o app (irá exibir a SplashScreen e seguir o fluxo normal)
+                  AppRestart.restartApp(context);
+                }
+              } catch (e) {
+                // Em caso de erro, fechar o diálogo e mostrar mensagem
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Erro ao fazer logout: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
               }
             },
           ),
@@ -94,4 +143,4 @@ class AppDrawer extends StatelessWidget {
       ),
     );
   }
-} 
+}

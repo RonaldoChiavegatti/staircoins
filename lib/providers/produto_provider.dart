@@ -14,7 +14,8 @@ class ProdutoProvider with ChangeNotifier {
     {
       'id': '1',
       'nome': 'Caneta Personalizada',
-      'descricao': 'Caneta com o logo da escola, ideal para estudantes que buscam qualidade e estilo. A caneta possui tinta azul e ponta média, garantindo uma escrita suave e confortável.',
+      'descricao':
+          'Caneta com o logo da escola, ideal para estudantes que buscam qualidade e estilo. A caneta possui tinta azul e ponta média, garantindo uma escrita suave e confortável.',
       'preco': 50,
       'quantidade': 20,
       'imagem': 'assets/images/caneta.png',
@@ -22,7 +23,8 @@ class ProdutoProvider with ChangeNotifier {
     {
       'id': '2',
       'nome': 'Caderno Exclusivo',
-      'descricao': 'Caderno capa dura com 100 folhas, design exclusivo e papel de alta qualidade. Perfeito para anotações em sala de aula ou para organizar seus estudos em casa.',
+      'descricao':
+          'Caderno capa dura com 100 folhas, design exclusivo e papel de alta qualidade. Perfeito para anotações em sala de aula ou para organizar seus estudos em casa.',
       'preco': 150,
       'quantidade': 15,
       'imagem': 'assets/images/caderno.png',
@@ -30,7 +32,8 @@ class ProdutoProvider with ChangeNotifier {
     {
       'id': '3',
       'nome': 'Adesivos',
-      'descricao': 'Conjunto com 10 adesivos temáticos da escola, perfeitos para personalizar seus materiais e mostrar seu espírito escolar. Adesivos resistentes à água e duráveis.',
+      'descricao':
+          'Conjunto com 10 adesivos temáticos da escola, perfeitos para personalizar seus materiais e mostrar seu espírito escolar. Adesivos resistentes à água e duráveis.',
       'preco': 30,
       'quantidade': 50,
       'imagem': 'assets/images/adesivos.png',
@@ -38,7 +41,8 @@ class ProdutoProvider with ChangeNotifier {
     {
       'id': '4',
       'nome': 'Squeeze',
-      'descricao': 'Garrafa de água 500ml, material durável e livre de BPA. Design moderno com o logo da escola, perfeita para manter-se hidratado durante as aulas e atividades físicas.',
+      'descricao':
+          'Garrafa de água 500ml, material durável e livre de BPA. Design moderno com o logo da escola, perfeita para manter-se hidratado durante as aulas e atividades físicas.',
       'preco': 100,
       'quantidade': 25,
       'imagem': 'assets/images/squeeze.png',
@@ -46,7 +50,8 @@ class ProdutoProvider with ChangeNotifier {
     {
       'id': '5',
       'nome': 'Mochila',
-      'descricao': 'Mochila resistente à água com compartimentos organizados, alças acolchoadas e espaço para laptop. Design exclusivo com o logo da escola, combinando estilo e funcionalidade.',
+      'descricao':
+          'Mochila resistente à água com compartimentos organizados, alças acolchoadas e espaço para laptop. Design exclusivo com o logo da escola, combinando estilo e funcionalidade.',
       'preco': 300,
       'quantidade': 10,
       'imagem': 'assets/images/mochila.png',
@@ -157,9 +162,22 @@ class ProdutoProvider with ChangeNotifier {
     var codigo = "$prefixo-";
 
     for (var i = 0; i < 6; i++) {
-      codigo += caracteres[DateTime.now().millisecondsSinceEpoch % caracteres.length];
+      codigo +=
+          caracteres[DateTime.now().millisecondsSinceEpoch % caracteres.length];
     }
 
     return codigo;
+  }
+
+  // Método para limpar os dados quando o usuário fizer logout
+  void limparDados() {
+    debugPrint('ProdutoProvider: Limpando dados após logout');
+    _produtos = [];
+    _isLoading = false;
+    notifyListeners();
+    debugPrint('ProdutoProvider: Dados limpos com sucesso');
+
+    // Recarregar os produtos após limpar
+    _loadProdutos();
   }
 }

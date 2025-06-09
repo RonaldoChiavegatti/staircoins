@@ -2,8 +2,10 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:staircoins/core/di/injection_container.dart' as di;
+import 'package:staircoins/core/utils/app_restart.dart';
 import 'package:staircoins/firebase_options.dart';
 import 'package:staircoins/login_screen.dart';
+import 'package:staircoins/providers/atividade_provider.dart';
 import 'package:staircoins/providers/auth_provider.dart';
 import 'package:staircoins/providers/produto_provider.dart';
 import 'package:staircoins/providers/turma_provider.dart';
@@ -23,7 +25,10 @@ void main() async {
   // Inicializar injeção de dependências
   await di.init();
 
-  runApp(const MyApp());
+  runApp(RestartWidget(
+    key: AppRestart.restartKey,
+    child: const MyApp(),
+  ));
 }
 
 class MyApp extends StatelessWidget {
@@ -33,9 +38,12 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        // Auth Provider
         ChangeNotifierProvider(
           create: (_) => di.sl<AuthProvider>(),
         ),
+
+        // Turma Provider
         ChangeNotifierProxyProvider<AuthProvider, TurmaProvider>(
           create: (_) => di.sl<TurmaProvider>(),
           update: (_, auth, previousTurmaProvider) {
@@ -49,7 +57,16 @@ class MyApp extends StatelessWidget {
             return turmaProvider;
           },
         ),
-        ChangeNotifierProvider(create: (_) => ProdutoProvider()),
+
+        // Produto Provider
+        ChangeNotifierProvider(
+          create: (_) => ProdutoProvider(),
+        ),
+
+        // Atividade Provider
+        ChangeNotifierProvider(
+          create: (_) => AtividadeProvider(),
+        ),
       ],
       child: MaterialApp(
         title: 'StairCoins',

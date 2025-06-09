@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:staircoins/providers/auth_provider.dart';
+import 'package:staircoins/providers/turma_provider.dart';
 import 'package:staircoins/screens/aluno/aluno_home_screen.dart';
 import 'package:staircoins/screens/auth/login_screen.dart';
 import 'package:staircoins/screens/professor/professor_home_screen.dart';
@@ -25,8 +26,19 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    
+
     if (authProvider.isAuthenticated) {
+      // Inicializar o TurmaProvider
+      try {
+        final turmaProvider =
+            Provider.of<TurmaProvider>(context, listen: false);
+        await turmaProvider.init();
+      } catch (e) {
+        debugPrint('Erro ao inicializar TurmaProvider: $e');
+      }
+
+      if (!mounted) return;
+
       if (authProvider.isProfessor) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const ProfessorHomeScreen()),

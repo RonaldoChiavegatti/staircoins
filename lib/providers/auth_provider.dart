@@ -182,6 +182,9 @@ class AuthProvider with ChangeNotifier {
         final prefs = await SharedPreferences.getInstance();
         await prefs.remove('staircoins_user');
 
+        // Notificar os ouvintes sobre a mudança
+        notifyListeners();
+
         return true;
       });
     } catch (e) {

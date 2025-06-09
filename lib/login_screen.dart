@@ -42,12 +42,14 @@ class _LoginScreenState extends State<LoginScreen> {
         _passwordController.text,
       );
 
-      if (context.mounted && success) {
-        // Inicializar o TurmaProvider após o login bem-sucedido
-        final turmaProvider =
-            Provider.of<TurmaProvider>(context, listen: false);
-        await turmaProvider.init();
+      // Verificar se o contexto ainda está montado
+      if (!mounted) return;
 
+      if (success) {
+        // Login bem-sucedido
+        debugPrint('Login bem-sucedido para: ${_emailController.text.trim()}');
+
+        // Navegar para a tela inicial apropriada
         final user = authProvider.user;
         final route = MaterialPageRoute(
           builder: (_) => user?.tipo == 'professor'
@@ -55,17 +57,31 @@ class _LoginScreenState extends State<LoginScreen> {
               : const AlunoHomeScreen(),
         );
         Navigator.pushReplacement(context, route);
-      } else if (context.mounted) {
-        // Exibir mensagem de erro se o login falhar
+
+        // Inicializar o TurmaProvider após a navegação
+        Future.microtask(() {
+          if (mounted) {
+            final turmaProvider =
+                Provider.of<TurmaProvider>(context, listen: false);
+            turmaProvider.init();
+          }
+        });
+      } else {
+        // Login falhou
+        debugPrint('Login falhou: ${authProvider.errorMessage}');
+
+        // Exibir mensagem de erro
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Falha no login. Verifique suas credenciais.'),
+          SnackBar(
+            content: Text(
+                'Falha no login: ${authProvider.errorMessage ?? 'Verifique suas credenciais.'}'),
             backgroundColor: Colors.red,
           ),
         );
       }
     } catch (e) {
-      if (context.mounted) {
+      debugPrint('Exceção no login: $e');
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Erro ao fazer login: ${e.toString()}'),

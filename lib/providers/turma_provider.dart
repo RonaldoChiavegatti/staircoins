@@ -25,25 +25,48 @@ class TurmaProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
+  // Método para limpar os dados quando o usuário fizer logout
+  void limparDados() {
+    debugPrint('TurmaProvider: Limpando dados após logout');
+    _turmas = [];
+    _errorMessage = null;
+
+    // Garantir que todos os listeners sejam notificados
+    notifyListeners();
+
+    debugPrint('TurmaProvider: Dados limpos com sucesso');
+  }
+
   // Método para inicializar o provider quando o usuário fizer login
   Future<void> init() async {
-    if (authProvider.isAuthenticated) {
-      final user = authProvider.user;
-      debugPrint(
-          'TurmaProvider.init: Usuário autenticado: ${user?.name} (${user?.id})');
+    // Limpar dados anteriores para evitar mistura de dados
+    _turmas = [];
+    _errorMessage = null;
 
-      if (user != null && user.turmas.isNotEmpty) {
+    try {
+      if (authProvider.isAuthenticated) {
+        final user = authProvider.user;
         debugPrint(
-            'TurmaProvider.init: Usuário tem ${user.turmas.length} turmas associadas: ${user.turmas}');
-        // Buscar turmas pelos IDs associados ao usuário
-        await buscarTurmasPorIds(user.turmas);
+            'TurmaProvider.init: Usuário autenticado: ${user?.nome} (${user?.id})');
+
+        if (user != null && user.turmas.isNotEmpty) {
+          debugPrint(
+              'TurmaProvider.init: Usuário tem ${user.turmas.length} turmas associadas: ${user.turmas}');
+          // Buscar turmas pelos IDs associados ao usuário
+          await buscarTurmasPorIds(user.turmas);
+        } else {
+          debugPrint(
+              'TurmaProvider.init: Usuário não tem turmas ou turmas é null, carregando pelo método tradicional');
+          await _loadTurmas();
+        }
       } else {
-        debugPrint(
-            'TurmaProvider.init: Usuário não tem turmas ou turmas é null, carregando pelo método tradicional');
-        await _loadTurmas();
+        debugPrint('TurmaProvider.init: Usuário não autenticado');
       }
-    } else {
-      debugPrint('TurmaProvider.init: Usuário não autenticado');
+    } catch (e) {
+      debugPrint('TurmaProvider.init: Erro ao inicializar: $e');
+      _errorMessage = 'Erro ao carregar turmas: $e';
+    } finally {
+      notifyListeners();
     }
   }
 
