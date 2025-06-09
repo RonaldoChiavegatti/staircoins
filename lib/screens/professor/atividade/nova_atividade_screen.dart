@@ -22,11 +22,13 @@ class _NovaAtividadeScreenState extends State<NovaAtividadeScreen> {
   Turma? _turmaSelecionada;
 
   Future<void> _selecionarDataEntrega(BuildContext context) async {
+    final now = DateTime.now();
+    final lastDate = DateTime(now.year + 2); // 2 anos à frente
     final picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime(2025),
+      initialDate: now,
+      firstDate: now,
+      lastDate: lastDate,
     );
     if (picked != null && picked != _dataEntregaSelecionada) {
       setState(() {
@@ -47,7 +49,8 @@ class _NovaAtividadeScreenState extends State<NovaAtividadeScreen> {
       }
 
       try {
-        await Provider.of<AtividadeProvider>(context, listen: false).criarAtividade(
+        await Provider.of<AtividadeProvider>(context, listen: false)
+            .criarAtividade(
           titulo: _tituloController.text,
           descricao: _descricaoController.text,
           dataEntrega: _dataEntregaSelecionada!,

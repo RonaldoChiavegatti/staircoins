@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:staircoins/models/atividade.dart';
 import 'package:uuid/uuid.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AtividadeProvider with ChangeNotifier {
   List<Atividade> _atividades = [];
@@ -97,11 +98,9 @@ class AtividadeProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // Simulando delay de rede
-      await Future.delayed(const Duration(seconds: 1));
-
+      final docRef = FirebaseFirestore.instance.collection('atividades').doc();
       final novaAtividade = Atividade(
-        id: const Uuid().v4(),
+        id: docRef.id,
         titulo: titulo,
         descricao: descricao,
         dataEntrega: dataEntrega,
@@ -110,9 +109,9 @@ class AtividadeProvider with ChangeNotifier {
         turmaId: turmaId,
       );
 
-      _atividades.add(novaAtividade);
-      _mockAtividades.add(novaAtividade.toJson());
+      await docRef.set(novaAtividade.toJson());
 
+      _atividades.add(novaAtividade);
       notifyListeners();
     } catch (e) {
       rethrow;
@@ -162,5 +161,28 @@ class AtividadeProvider with ChangeNotifier {
 
     // Recarregar as atividades após limpar
     _loadAtividades();
+  }
+
+  Future<void> fetchAtividadesByTurma(String turmaId) async {
+    _isLoading = true;
+    _atividades = [];
+    notifyListeners();
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('atividades')
+          .where('turmaId', isEqualTo: turmaId)
+          .get();
+      _atividades = snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return Atividade.fromJson(data);
+      }).toList();
+    } catch (e) {
+      debugPrint('Erro ao buscar atividades do Firestore: $e');
+      _atividades = [];
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 }

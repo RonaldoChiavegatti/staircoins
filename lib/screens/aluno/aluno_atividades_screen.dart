@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:staircoins/models/atividade.dart';
-import 'package:staircoins/theme/app_theme.dart';
+import 'package:staircoins/models/turma.dart';
+import 'package:staircoins/providers/atividade_provider.dart';
+import 'package:staircoins/providers/turma_provider.dart';
+import 'package:staircoins/providers/entrega_atividade_provider.dart';
 import 'package:staircoins/screens/aluno/atividade/detalhe_atividade_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:staircoins/theme/app_theme.dart';
+import 'package:staircoins/models/entrega_atividade.dart';
 
 class AlunoAtividadesScreen extends StatefulWidget {
   const AlunoAtividadesScreen({super.key});
@@ -11,72 +18,95 @@ class AlunoAtividadesScreen extends StatefulWidget {
 }
 
 class _AlunoAtividadesScreenState extends State<AlunoAtividadesScreen> {
+  Turma? _turmaSelecionada;
   String? _statusFilter;
+
+  EntregaAtividade? _findEntrega(Atividade atividade, String? userId,
+      EntregaAtividadeProvider entregaProvider) {
+    if (userId == null) return null;
+    for (final entrega in entregaProvider.entregas) {
+      if (entrega.atividadeId == atividade.id && entrega.alunoId == userId) {
+        return entrega;
+      }
+    }
+    return null;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final turmaProvider = Provider.of<TurmaProvider>(context);
+    final minhasTurmas = turmaProvider.getMinhasTurmas();
+    if (_turmaSelecionada == null && minhasTurmas.isNotEmpty) {
+      _turmaSelecionada = minhasTurmas.first;
+      _buscarAtividades();
+      // Fetch entregas for the current user once on load
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+      if (userId != null) {
+        Provider.of<EntregaAtividadeProvider>(context, listen: false)
+            .fetchEntregasByAluno(userId);
+      }
+    }
+  }
+
+  void _buscarAtividades() {
+    if (_turmaSelecionada != null) {
+      Provider.of<AtividadeProvider>(context, listen: false)
+          .fetchAtividadesByTurma(_turmaSelecionada!.id);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    // Dados mockados para demonstração
-    // TODO: Replace with data from Provider
-    final atividades = [
-      {
-        'id': '1',
-        'titulo': 'Trabalho de Matemática',
-        'dataEntrega': '2023-05-15',
-        'pontuacao': 50,
-        'status': 'pendente',
-        'turma': 'Matemática - 9º Ano',
-      },
-      {
-        'id': '2',
-        'titulo': 'Redação sobre Meio Ambiente',
-        'dataEntrega': '2023-05-20',
-        'pontuacao': 30,
-        'status': 'pendente',
-        'turma': 'Matemática - 9º Ano',
-      },
-      {
-        'id': '3',
-        'titulo': 'Questionário de História',
-        'dataEntrega': '2023-05-10',
-        'pontuacao': 20,
-        'status': 'entregue',
-        'turma': 'História - 8º Ano',
-      },
-      {
-        'id': '4',
-        'titulo': 'Apresentação de Ciências',
-        'dataEntrega': '2023-04-30',
-        'pontuacao': 40,
-        'status': 'atrasado',
-        'turma': 'Matemática - 9º Ano',
-      },
-    ];
+    final turmaProvider = Provider.of<TurmaProvider>(context);
+    final minhasTurmas = turmaProvider.getMinhasTurmas();
+    final atividadeProvider = Provider.of<AtividadeProvider>(context);
+    final entregaProvider = Provider.of<EntregaAtividadeProvider>(context);
+    final atividades = atividadeProvider.atividades;
+    final isLoading = atividadeProvider.isLoading;
+    final userId = FirebaseAuth.instance.currentUser?.uid;
 
     // Filtra atividades com base no status
     final filteredAtividades = _statusFilter == null
         ? atividades
-        : atividades.where((a) => a['status'] == _statusFilter).toList();
+        : atividades.where((a) {
+            final entrega = _findEntrega(a, userId, entregaProvider);
+            final status =
+                entrega?.status ?? a.status.toString().split('.').last;
+            return status == _statusFilter;
+          }).toList();
 
     return Scaffold(
+      appBar: AppBar(title: const Text('Minhas Atividades')),
       body: Column(
         children: [
-          // Barra de busca
           Padding(
             padding: const EdgeInsets.all(16),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Buscar atividades...',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              onChanged: (value) {
-                // TODO: Implementar busca
+            child: DropdownButtonFormField<Turma>(
+              value: _turmaSelecionada,
+              items: minhasTurmas.map((turma) {
+                return DropdownMenuItem<Turma>(
+                  value: turma,
+                  child: Text(turma.nome),
+                );
+              }).toList(),
+              onChanged: (turma) {
+                setState(() {
+                  _turmaSelecionada = turma;
+                });
+                _buscarAtividades();
+                // Fetch entregas again when turma changes
+                if (userId != null) {
+                  Provider.of<EntregaAtividadeProvider>(context, listen: false)
+                      .fetchEntregasByAluno(userId);
+                }
               },
+              decoration: const InputDecoration(
+                labelText: 'Selecione a Turma',
+                border: OutlineInputBorder(),
+              ),
             ),
           ),
-
           // Filtros
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -94,132 +124,132 @@ class _AlunoAtividadesScreenState extends State<AlunoAtividadesScreen> {
             ),
           ),
           const SizedBox(height: 8),
-
-          // Lista de atividades
           Expanded(
-            child: filteredAtividades.isEmpty
-                ? const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.assignment_outlined,
-                          size: 64,
-                          color: AppTheme.mutedForegroundColor,
+            child: isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : filteredAtividades.isEmpty
+                    ? const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.assignment_outlined,
+                              size: 64,
+                              color: AppTheme.mutedForegroundColor,
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'Nenhuma atividade encontrada',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Não há atividades que correspondam aos filtros selecionados',
+                              style: TextStyle(
+                                color: AppTheme.mutedForegroundColor,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
                         ),
-                        SizedBox(height: 16),
-                        Text(
-                          'Nenhuma atividade encontrada',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Não há atividades que correspondam aos filtros selecionados',
-                          style: TextStyle(
-                            color: AppTheme.mutedForegroundColor,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: filteredAtividades.length,
-                    itemBuilder: (context, index) {
-                      final atividade = filteredAtividades[index];
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        child: InkWell(
-                          onTap: () {
-                            // Navigate to activity details screen
-                            // TODO: Get actual Atividade object from Provider
-                            final Atividade mockAtividade = Atividade(
-                              id: atividade['id'] as String,
-                              titulo: atividade['titulo'] as String,
-                              descricao: 'Esta é uma descrição mockada para demonstração.', // TODO: Get actual description
-                              dataEntrega: DateTime.parse('${atividade['dataEntrega']}T00:00:00.000'), // Assuming date format
-                              pontuacao: atividade['pontuacao'] as int,
-                              status: AtividadeStatus.values.firstWhere((e) => e.toString().split('.').last == atividade['status']),
-                              turmaId: 'mock_turma_id', // TODO: Get actual turmaId
-                            );
-                            Navigator.of(context).push(MaterialPageRoute(
-                                builder: (_) => DetalheAtividadeScreen(atividade: mockAtividade)));
-                          },
-                          borderRadius: BorderRadius.circular(16),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        atividade['titulo'] as String,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                    ),
-                                    _buildStatusBadge(atividade['status'] as String),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Entrega: ${atividade['dataEntrega']}',
-                                  style: const TextStyle(
-                                    color: AppTheme.mutedForegroundColor,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: filteredAtividades.length,
+                        itemBuilder: (context, index) {
+                          final atividade = filteredAtividades[index];
+                          final entrega =
+                              _findEntrega(atividade, userId, entregaProvider);
+                          final status = entrega?.status ??
+                              atividade.status.toString().split('.').last;
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 16),
+                            child: InkWell(
+                              onTap: () {
+                                Navigator.of(context).push(MaterialPageRoute(
+                                    builder: (_) => DetalheAtividadeScreen(
+                                        atividade: atividade)));
+                              },
+                              borderRadius: BorderRadius.circular(16),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
                                       children: [
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 4,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: AppTheme.primaryColor.withOpacity(0.1),
-                                            borderRadius: BorderRadius.circular(12),
-                                          ),
+                                        Expanded(
                                           child: Text(
-                                            '${atividade['pontuacao']} moedas',
+                                            atividade.titulo,
                                             style: const TextStyle(
-                                              fontSize: 12,
-                                              color: AppTheme.primaryColor,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
                                             ),
                                           ),
                                         ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          'Turma: ${atividade['turma']}',
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            color: AppTheme.mutedForegroundColor,
-                                          ),
+                                        _buildStatusBadge(status),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Entrega: ${atividade.dataEntrega.toString().split(' ').first}',
+                                      style: const TextStyle(
+                                        color: AppTheme.mutedForegroundColor,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                horizontal: 8,
+                                                vertical: 4,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: AppTheme.primaryColor
+                                                    .withOpacity(0.1),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                              child: Text(
+                                                '${atividade.pontuacao} moedas',
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                  color: AppTheme.primaryColor,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              'Turma: ${_turmaSelecionada?.nome ?? ''}',
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                color: AppTheme
+                                                    .mutedForegroundColor,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ],
                                     ),
                                   ],
                                 ),
-                              ],
+                              ),
                             ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+                          );
+                        },
+                      ),
           ),
         ],
       ),

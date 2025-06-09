@@ -3,14 +3,42 @@ import 'package:staircoins/models/atividade.dart';
 import 'package:intl/intl.dart'; // Import for date formatting
 import 'package:staircoins/theme/app_theme.dart';
 import 'package:staircoins/screens/aluno/atividade/detalhe_entrega_atividade_screen.dart';
+import 'package:provider/provider.dart';
+import 'package:staircoins/providers/entrega_atividade_provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:staircoins/models/entrega_atividade.dart'; // Importa o modelo EntregaAtividade
 
 class DetalheAtividadeScreen extends StatelessWidget {
   final Atividade atividade;
 
   const DetalheAtividadeScreen({super.key, required this.atividade});
 
+  // Função auxiliar para encontrar a entrega (igual à de aluno_atividades_screen)
+  EntregaAtividade? _findEntrega(Atividade atividade, String? userId,
+      EntregaAtividadeProvider entregaProvider) {
+    if (userId == null) return null;
+    for (final entrega in entregaProvider.entregas) {
+      if (entrega.atividadeId == atividade.id && entrega.alunoId == userId) {
+        return entrega;
+      }
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final entregaProvider = Provider.of<EntregaAtividadeProvider>(context);
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+
+    // Usa a função auxiliar para encontrar a entrega
+    final entrega = _findEntrega(atividade, userId, entregaProvider);
+
+    // Garante que o status seja do tipo String para o switch
+    final status =
+        entrega?.status ?? atividade.status.toString().split('.').last;
+    final nota = entrega?.nota;
+    final feedback = entrega?.feedback;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(atividade.titulo),
@@ -28,7 +56,7 @@ class DetalheAtividadeScreen extends StatelessWidget {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  _buildStatusBadge(atividade.status),
+                  _buildStatusBadge(status),
                   const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -69,27 +97,35 @@ class DetalheAtividadeScreen extends StatelessWidget {
                   fontSize: 16,
                 ),
               ),
-              if (atividade.status == AtividadeStatus.pendente ||
-                  atividade.status == AtividadeStatus.atrasado)
+              if (status == 'pendente' || status == 'atrasado')
                 ElevatedButton(
                   onPressed: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => DetalheEntregaAtividadeScreen(atividade: atividade),
+                        builder: (_) =>
+                            DetalheEntregaAtividadeScreen(atividade: atividade),
                       ),
                     );
                   },
                   child: const Text('Entregar Atividade'),
+                ),
+              if (status == 'entregue') ...[
+                const SizedBox(height: 16),
+                if (nota != null)
+                  Text('Nota: $nota',
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                if (feedback != null && feedback.isNotEmpty)
+                  Text('Feedback: $feedback'),
+              ],
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  // TODO: Navigate to Anexos screen
+                },
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.mutedColor),
+                child: const Text('Anexos'),
               ),
-              // TODO: Add submission form or button based on status
- const SizedBox(height: 16),
- ElevatedButton(
- onPressed: () {
- // TODO: Navigate to Anexos screen
- },
- style: ElevatedButton.styleFrom(backgroundColor: AppTheme.mutedColor),
- child: const Text('Anexos'),
- ),
             ],
           ),
         ),
@@ -97,27 +133,31 @@ class DetalheAtividadeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusBadge(AtividadeStatus status) {
+  Widget _buildStatusBadge(String status) {
     Color backgroundColor;
     Color textColor;
     String label;
 
     switch (status) {
-      case AtividadeStatus.pendente:
+      case 'pendente':
         backgroundColor = AppTheme.warningColor.withOpacity(0.2);
         textColor = AppTheme.warningColor;
         label = 'Pendente';
         break;
-      case AtividadeStatus.entregue:
+      case 'entregue':
         backgroundColor = AppTheme.successColor.withOpacity(0.2);
         textColor = AppTheme.successColor;
         label = 'Entregue';
         break;
-      case AtividadeStatus.atrasado:
+      case 'atrasado':
         backgroundColor = AppTheme.errorColor.withOpacity(0.2);
         textColor = AppTheme.errorColor;
         label = 'Atrasado';
         break;
+      default:
+        backgroundColor = AppTheme.mutedColor;
+        textColor = AppTheme.mutedForegroundColor;
+        label = status;
     }
 
     return Container(
