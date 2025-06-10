@@ -35,4 +35,7 @@ abstract class AuthRepository {
   /// Remove uma turma do usuário
   Future<Either<Failure, User>> removeTurmaFromUser(
       String userId, String turmaId);
+
+  /// Busca um usuário pelo ID
+  Future<Either<Failure, User>> getUserById(String userId);
 }

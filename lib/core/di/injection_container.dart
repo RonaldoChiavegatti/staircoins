@@ -83,6 +83,7 @@ Future<void> init() async {
   sl.registerFactory(() => EntregaAtividadeProvider(
         repository: sl(),
         datasource: sl(),
+        authRepository: sl(),
       ));
 }
 

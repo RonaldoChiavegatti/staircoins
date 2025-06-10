@@ -60,18 +60,18 @@ class FirebaseEntregaAtividadeDatasource {
     return EntregaAtividade.fromJson(query.docs.first.data());
   }
 
-  Future<String> uploadAnexo(String entregaId, File file) async {
-    final ref = storage
-        .ref()
-        .child('entregas_atividade/$entregaId/${file.path.split('/').last}');
+  Future<String> uploadAnexo(
+      String entregaId, File file, String originalFileName) async {
+    final ref =
+        storage.ref().child('entregas_atividade/$entregaId/$originalFileName');
     final uploadTask = await ref.putFile(file);
     return await uploadTask.ref.getDownloadURL();
   }
 
-  Future<String> uploadAnexoWeb(String entregaId, Uint8List fileBytes) async {
-    final fileName =
-        'anexo_${DateTime.now().millisecondsSinceEpoch}'; // Generic filename for web
-    final ref = storage.ref().child('entregas_atividade/$entregaId/$fileName');
+  Future<String> uploadAnexoWeb(
+      String entregaId, Uint8List fileBytes, String originalFileName) async {
+    final ref =
+        storage.ref().child('entregas_atividade/$entregaId/$originalFileName');
     final uploadTask = await ref.putData(fileBytes);
     return await uploadTask.ref.getDownloadURL();
   }

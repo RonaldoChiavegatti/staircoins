@@ -99,10 +99,11 @@ class _DetalheEntregaAtividadeScreenState
     String? anexoUrl;
 
     if (kIsWeb) {
-      anexoUrl =
-          await provider.uploadAnexo(entregaId, fileBytes: _selectedFileBytes!);
+      anexoUrl = await provider.uploadAnexo(entregaId,
+          fileBytes: _selectedFileBytes!, originalFileName: _selectedFileName);
     } else {
-      anexoUrl = await provider.uploadAnexo(entregaId, file: _selectedFile!);
+      anexoUrl = await provider.uploadAnexo(entregaId,
+          file: _selectedFile!, originalFileName: _selectedFileName);
     }
 
     if (anexoUrl == null) {
@@ -123,6 +124,7 @@ class _DetalheEntregaAtividadeScreenState
       status: 'entregue',
       nota: null,
       feedback: null,
+      originalFileName: _selectedFileName,
     );
     await provider.entregarAtividade(entrega);
     ScaffoldMessenger.of(context).showSnackBar(

@@ -9,6 +9,7 @@ class EntregaAtividade {
   final String status; // 'entregue', 'nao_entregue', 'atrasado'
   final double? nota;
   final String? feedback;
+  final String? originalFileName;
 
   EntregaAtividade({
     required this.id,
@@ -19,6 +20,7 @@ class EntregaAtividade {
     required this.status,
     this.nota,
     this.feedback,
+    this.originalFileName,
   });
 
   factory EntregaAtividade.fromJson(Map<String, dynamic> json) {
@@ -33,6 +35,7 @@ class EntregaAtividade {
       status: json['status'] as String,
       nota: json['nota'] != null ? (json['nota'] as num).toDouble() : null,
       feedback: json['feedback'] as String?,
+      originalFileName: json['originalFileName'] as String?,
     );
   }
 
@@ -46,6 +49,7 @@ class EntregaAtividade {
       'status': status,
       'nota': nota,
       'feedback': feedback,
+      'originalFileName': originalFileName,
     };
   }
 
@@ -58,6 +62,7 @@ class EntregaAtividade {
     String? status,
     double? nota,
     String? feedback,
+    String? originalFileName,
   }) {
     return EntregaAtividade(
       id: id ?? this.id,
@@ -68,6 +73,7 @@ class EntregaAtividade {
       status: status ?? this.status,
       nota: nota ?? this.nota,
       feedback: feedback ?? this.feedback,
+      originalFileName: originalFileName ?? this.originalFileName,
     );
   }
 }

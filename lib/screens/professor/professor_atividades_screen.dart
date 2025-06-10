@@ -110,42 +110,45 @@ class _ProfessorAtividadesScreenState extends State<ProfessorAtividadesScreen> {
                                           ),
                                         ),
                                       ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 4,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: atividade.status ==
-                                                  AtividadeStatus.pendente
-                                              ? AppTheme.warningColor
-                                                  .withOpacity(0.2)
-                                              : atividade.status ==
-                                                      AtividadeStatus.entregue
-                                                  ? AppTheme.successColor
-                                                      .withOpacity(0.2)
-                                                  : AppTheme.errorColor
-                                                      .withOpacity(0.2),
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                        ),
-                                        child: Text(
-                                          atividade.status ==
-                                                  AtividadeStatus.pendente
-                                              ? 'Pendente'
-                                              : atividade.status ==
-                                                      AtividadeStatus.entregue
-                                                  ? 'Entregue'
-                                                  : 'Atrasado',
-                                          style: TextStyle(
-                                            fontSize: 12,
+                                      Flexible(
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
+                                          decoration: BoxDecoration(
                                             color: atividade.status ==
                                                     AtividadeStatus.pendente
                                                 ? AppTheme.warningColor
+                                                    .withOpacity(0.2)
                                                 : atividade.status ==
                                                         AtividadeStatus.entregue
                                                     ? AppTheme.successColor
-                                                    : AppTheme.errorColor,
+                                                        .withOpacity(0.2)
+                                                    : AppTheme.errorColor
+                                                        .withOpacity(0.2),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                          child: Text(
+                                            atividade.status ==
+                                                    AtividadeStatus.pendente
+                                                ? 'Pendente'
+                                                : atividade.status ==
+                                                        AtividadeStatus.entregue
+                                                    ? 'Entregue'
+                                                    : 'Atrasado',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: atividade.status ==
+                                                      AtividadeStatus.pendente
+                                                  ? AppTheme.warningColor
+                                                  : atividade.status ==
+                                                          AtividadeStatus
+                                                              .entregue
+                                                      ? AppTheme.successColor
+                                                      : AppTheme.errorColor,
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -164,37 +167,43 @@ class _ProfessorAtividadesScreenState extends State<ProfessorAtividadesScreen> {
                                     mainAxisAlignment:
                                         MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Row(
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 4,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: AppTheme.primaryColor
-                                                  .withOpacity(0.1),
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                            ),
-                                            child: Text(
-                                              '${atividade.pontuacao} moedas',
-                                              style: const TextStyle(
-                                                fontSize: 12,
-                                                color: AppTheme.primaryColor,
+                                      Flexible(
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                horizontal: 8,
+                                                vertical: 4,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: AppTheme.primaryColor
+                                                    .withOpacity(0.1),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                              child: Text(
+                                                '${atividade.pontuacao} moedas',
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                  color: AppTheme.primaryColor,
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            'Turma: ${_turmaSelecionada?.nome ?? ''}',
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              color:
-                                                  AppTheme.mutedForegroundColor,
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Text(
+                                                'Turma: ${_turmaSelecionada?.nome ?? ''}',
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                  color: AppTheme
+                                                      .mutedForegroundColor,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
                                             ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
                                       TextButton(
                                         onPressed: () {

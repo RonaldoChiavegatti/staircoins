@@ -211,4 +211,22 @@ class FirebaseAuthRepositoryImpl implements AuthRepository {
       return Left(const NetworkFailure());
     }
   }
+
+  @override
+  Future<Either<Failure, User>> getUserById(String userId) async {
+    if (await networkInfo.isConnected) {
+      try {
+        final user = await datasource.getUserById(userId);
+        return Right(user);
+      } on ServerException catch (e) {
+        return Left(ServerFailure(e.message));
+      } on FirebaseAuthException catch (e) {
+        return Left(AuthFailure(e.message));
+      } catch (e) {
+        return Left(ServerFailure(e.toString()));
+      }
+    } else {
+      return Left(const NetworkFailure());
+    }
+  }
 }
