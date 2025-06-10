@@ -1,7 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:staircoins/core/errors/exceptions.dart';
 import 'package:staircoins/models/user.dart' as app_models;
+import 'dart:io';
+import 'dart:typed_data';
 
 abstract class FirebaseAuthDatasource {
   /// Retorna o usuário atualmente autenticado ou null se não houver nenhum
@@ -34,17 +37,24 @@ abstract class FirebaseAuthDatasource {
 
   /// Busca um usuário pelo ID
   Future<app_models.User> getUserById(String userId);
+
+  /// Faz o upload de uma imagem de perfil para o Firebase Storage e retorna a URL de download
+  Future<String> uploadProfilePicture(String userId,
+      {String? filePath, Uint8List? fileBytes});
 }
 
 class FirebaseAuthDatasourceImpl implements FirebaseAuthDatasource {
   final firebase_auth.FirebaseAuth _firebaseAuth;
   final FirebaseFirestore _firestore;
+  final FirebaseStorage _firebaseStorage;
 
   FirebaseAuthDatasourceImpl({
     required firebase_auth.FirebaseAuth firebaseAuth,
     required FirebaseFirestore firestore,
+    required FirebaseStorage firebaseStorage,
   })  : _firebaseAuth = firebaseAuth,
-        _firestore = firestore;
+        _firestore = firestore,
+        _firebaseStorage = firebaseStorage;
 
   @override
   Future<app_models.User?> getCurrentUser() async {
@@ -291,7 +301,39 @@ class FirebaseAuthDatasourceImpl implements FirebaseAuthDatasource {
       }
       return app_models.User.fromFirestore(userDoc);
     } catch (e) {
-      throw ServerException('Erro ao buscar usuário por ID: ${e.toString()}');
+      throw ServerException('Erro ao buscar usuário: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<String> uploadProfilePicture(String userId,
+      {String? filePath, Uint8List? fileBytes}) async {
+    try {
+      if (filePath == null && fileBytes == null) {
+        throw ServerException('Nenhum dado de imagem fornecido.');
+      }
+
+      final ref =
+          _firebaseStorage.ref().child('profile_pictures').child('$userId.jpg');
+      UploadTask uploadTask;
+
+      if (filePath != null) {
+        final file = File(filePath);
+        uploadTask = ref.putFile(file);
+      } else if (fileBytes != null) {
+        uploadTask = ref.putData(fileBytes);
+      } else {
+        throw ServerException(
+            'Formato de imagem inválido.'); // Não deve chegar aqui devido à verificação inicial
+      }
+
+      final snapshot = await uploadTask.whenComplete(() => {});
+      final downloadUrl = await snapshot.ref.getDownloadURL();
+      return downloadUrl;
+    } on FirebaseException catch (e) {
+      throw ServerException('Erro no Firebase Storage: ${e.message}');
+    } catch (e) {
+      throw ServerException('Erro ao fazer upload da imagem: ${e.toString()}');
     }
   }
 }

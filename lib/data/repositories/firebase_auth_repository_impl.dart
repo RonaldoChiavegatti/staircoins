@@ -5,6 +5,7 @@ import 'package:staircoins/core/network/network_info.dart';
 import 'package:staircoins/data/datasources/firebase_auth_datasource.dart';
 import 'package:staircoins/domain/repositories/auth_repository.dart';
 import 'package:staircoins/models/user.dart';
+import 'dart:typed_data';
 
 class FirebaseAuthRepositoryImpl implements AuthRepository {
   final FirebaseAuthDatasource datasource;
@@ -218,6 +219,26 @@ class FirebaseAuthRepositoryImpl implements AuthRepository {
       try {
         final user = await datasource.getUserById(userId);
         return Right(user);
+      } on ServerException catch (e) {
+        return Left(ServerFailure(e.message));
+      } on FirebaseAuthException catch (e) {
+        return Left(AuthFailure(e.message));
+      } catch (e) {
+        return Left(ServerFailure(e.toString()));
+      }
+    } else {
+      return Left(const NetworkFailure());
+    }
+  }
+
+  @override
+  Future<Either<Failure, String>> uploadProfilePicture(String userId,
+      {String? filePath, Uint8List? fileBytes}) async {
+    if (await networkInfo.isConnected) {
+      try {
+        final downloadUrl = await datasource.uploadProfilePicture(userId,
+            filePath: filePath, fileBytes: fileBytes);
+        return Right(downloadUrl);
       } on ServerException catch (e) {
         return Left(ServerFailure(e.message));
       } on FirebaseAuthException catch (e) {

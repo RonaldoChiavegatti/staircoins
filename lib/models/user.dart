@@ -12,6 +12,7 @@ class User extends Equatable {
   final int staircoins;
   final List<String> turmas;
   final DateTime? createdAt;
+  final String? photoUrl;
 
   String get nome => name;
 
@@ -24,32 +25,35 @@ class User extends Equatable {
     this.staircoins = 0,
     this.turmas = const [],
     this.createdAt,
+    this.photoUrl,
   }) : tipo = tipo ?? (type == UserType.professor ? 'professor' : 'aluno');
 
   factory User.fromJson(Map<String, dynamic> json) {
-    final userType = json['type'] == 'professor' ? UserType.professor : UserType.aluno;
+    final userType =
+        json['type'] == 'professor' ? UserType.professor : UserType.aluno;
     return User(
       id: json['id'],
       name: json['name'],
       email: json['email'],
       type: userType,
-      tipo: json['tipo'], // Opcional, será gerado automaticamente se não existir
+      tipo:
+          json['tipo'], // Opcional, será gerado automaticamente se não existir
       staircoins: json['staircoins'] ?? 0,
-      turmas: json['turmas'] != null
-          ? List<String>.from(json['turmas'])
-          : [],
-      createdAt: json['createdAt'] != null 
-          ? (json['createdAt'] is Timestamp 
-              ? (json['createdAt'] as Timestamp).toDate() 
+      turmas: json['turmas'] != null ? List<String>.from(json['turmas']) : [],
+      createdAt: json['createdAt'] != null
+          ? (json['createdAt'] is Timestamp
+              ? (json['createdAt'] as Timestamp).toDate()
               : DateTime.parse(json['createdAt'].toString()))
           : null,
+      photoUrl: json['photoUrl'],
     );
   }
 
   factory User.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
-    final userType = data['tipo'] == 'professor' ? UserType.professor : UserType.aluno;
-    
+    final userType =
+        data['tipo'] == 'professor' ? UserType.professor : UserType.aluno;
+
     return User(
       id: doc.id,
       name: data['name'] ?? '',
@@ -57,12 +61,11 @@ class User extends Equatable {
       type: userType,
       tipo: data['tipo'],
       staircoins: data['staircoins'] ?? 0,
-      turmas: data['turmas'] != null 
-          ? List<String>.from(data['turmas']) 
-          : [],
-      createdAt: data['createdAt'] != null 
-          ? (data['createdAt'] as Timestamp).toDate() 
+      turmas: data['turmas'] != null ? List<String>.from(data['turmas']) : [],
+      createdAt: data['createdAt'] != null
+          ? (data['createdAt'] as Timestamp).toDate()
           : null,
+      photoUrl: data['photoUrl'],
     );
   }
 
@@ -76,6 +79,7 @@ class User extends Equatable {
       'staircoins': staircoins,
       'turmas': turmas,
       'createdAt': createdAt?.toIso8601String(),
+      'photoUrl': photoUrl,
     };
   }
 
@@ -87,6 +91,7 @@ class User extends Equatable {
       'staircoins': staircoins,
       'turmas': turmas,
       'createdAt': createdAt ?? FieldValue.serverTimestamp(),
+      'photoUrl': photoUrl,
     };
   }
 
@@ -99,6 +104,7 @@ class User extends Equatable {
     int? staircoins,
     List<String>? turmas,
     DateTime? createdAt,
+    String? photoUrl,
   }) {
     return User(
       id: id ?? this.id,
@@ -109,18 +115,20 @@ class User extends Equatable {
       staircoins: staircoins ?? this.staircoins,
       turmas: turmas ?? this.turmas,
       createdAt: createdAt ?? this.createdAt,
+      photoUrl: photoUrl ?? this.photoUrl,
     );
   }
-  
+
   @override
   List<Object?> get props => [
-    id, 
-    name, 
-    email, 
-    type, 
-    tipo, 
-    staircoins, 
-    turmas,
-    createdAt
-  ];
+        id,
+        name,
+        email,
+        type,
+        tipo,
+        staircoins,
+        turmas,
+        createdAt,
+        photoUrl,
+      ];
 }

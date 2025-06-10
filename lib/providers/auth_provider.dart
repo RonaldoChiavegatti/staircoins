@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:staircoins/domain/repositories/auth_repository.dart';
@@ -48,22 +49,13 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final userData = prefs.getString('staircoins_user');
-
-      if (userData != null) {
-        _user = User.fromJson(json.decode(userData));
-      } else {
-        // Tenta recuperar usuário do Firebase
-        final result = await authRepository.getCurrentUser();
-        result.fold((failure) => _errorMessage = failure.message, (user) {
-          if (user != null) {
-            _user = user;
-            // Salva no storage
-            prefs.setString('staircoins_user', json.encode(user.toJson()));
-          }
-        });
-      }
+      // Tenta recuperar usuário do Firebase (que também atualiza o storage local)
+      final result = await authRepository.getCurrentUser();
+      result.fold((failure) => _errorMessage = failure.message, (user) {
+        _user = user; // user pode ser null aqui se não houver usuário logado
+        debugPrint(
+            'AuthProvider: User loaded from storage. PhotoUrl: ${_user?.photoUrl}');
+      });
     } catch (e) {
       debugPrint('Erro ao carregar usuário: $e');
       _errorMessage = 'Erro ao carregar usuário';
@@ -248,6 +240,55 @@ class AuthProvider with ChangeNotifier {
     } catch (e) {
       _errorMessage = e.toString();
       return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> uploadProfilePicture(
+      {String? filePath, Uint8List? fileBytes}) async {
+    if (_user == null) {
+      _errorMessage = 'Usuário não autenticado.';
+      notifyListeners();
+      return false;
+    }
+
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final result = await authRepository.uploadProfilePicture(
+        _user!.id,
+        filePath: filePath,
+        fileBytes: fileBytes,
+      );
+
+      return result.fold((failure) {
+        _errorMessage = failure.message;
+        return false;
+      }, (photoUrl) async {
+        final updatedUser = _user!.copyWith(photoUrl: photoUrl);
+        _user = updatedUser;
+
+        // Atualiza no storage
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(
+            'staircoins_user', json.encode(updatedUser.toJson()));
+
+        // Atualiza no Firestore também
+        await authRepository.updateUser(updatedUser);
+
+        notifyListeners();
+        return true;
+      });
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 

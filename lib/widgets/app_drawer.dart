@@ -18,6 +18,11 @@ class AppDrawer extends StatelessWidget {
     final authProvider = Provider.of<AuthProvider>(context);
     final user = authProvider.user;
 
+    ImageProvider<Object>? avatarImage;
+    if (user?.photoUrl != null && user!.photoUrl!.isNotEmpty) {
+      avatarImage = NetworkImage(user.photoUrl!);
+    }
+
     return Drawer(
       child: Column(
         children: [
@@ -31,14 +36,17 @@ class AppDrawer extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const CircleAvatar(
+                  CircleAvatar(
                     radius: 35,
                     backgroundColor: Colors.white,
-                    child: Icon(
-                      Icons.person,
-                      size: 40,
-                      color: AppTheme.primaryColor,
-                    ),
+                    backgroundImage: avatarImage,
+                    child: user?.photoUrl != null && user!.photoUrl!.isNotEmpty
+                        ? null
+                        : Icon(
+                            Icons.person,
+                            size: 40,
+                            color: AppTheme.primaryColor,
+                          ),
                   ),
                   const SizedBox(height: 15),
                   Text(

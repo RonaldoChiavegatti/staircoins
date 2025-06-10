@@ -40,6 +40,7 @@ Future<void> init() async {
     () => FirebaseAuthDatasourceImpl(
       firebaseAuth: sl(),
       firestore: sl(),
+      firebaseStorage: sl(),
     ),
   );
 

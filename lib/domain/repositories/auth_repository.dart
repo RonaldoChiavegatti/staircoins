@@ -1,6 +1,7 @@
 import 'package:dartz/dartz.dart';
 import 'package:staircoins/core/errors/failures.dart';
 import 'package:staircoins/models/user.dart';
+import 'dart:typed_data';
 
 abstract class AuthRepository {
   /// Retorna o usuário atualmente autenticado ou null se não houver nenhum
@@ -28,6 +29,10 @@ abstract class AuthRepository {
 
   /// Atualiza a quantidade de staircoins do usuário
   Future<Either<Failure, User>> updateStaircoins(String userId, int amount);
+
+  /// Faz upload da foto de perfil do usuário
+  Future<Either<Failure, String>> uploadProfilePicture(String userId,
+      {String? filePath, Uint8List? fileBytes});
 
   /// Adiciona uma turma ao usuário
   Future<Either<Failure, User>> addTurmaToUser(String userId, String turmaId);
