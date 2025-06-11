@@ -20,11 +20,27 @@ class Atividade {
   });
 
   factory Atividade.fromJson(Map<String, dynamic> json) {
+    DateTime parseDataEntrega(dynamic value) {
+      if (value is String) {
+        return DateTime.parse(value);
+      } else if (value is DateTime) {
+        return value;
+      } else if (value != null) {
+        // Assumindo que é um Timestamp do Firestore
+        try {
+          return value.toDate();
+        } catch (e) {
+          return DateTime.now();
+        }
+      }
+      return DateTime.now();
+    }
+
     return Atividade(
       id: json['id'],
       titulo: json['titulo'],
       descricao: json['descricao'],
-      dataEntrega: DateTime.parse(json['dataEntrega']),
+      dataEntrega: parseDataEntrega(json['dataEntrega']),
       pontuacao: json['pontuacao'],
       status: AtividadeStatus.values.firstWhere(
         (e) => e.toString().split('.').last == json['status'],

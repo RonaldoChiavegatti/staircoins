@@ -27,7 +27,7 @@ Future<void> init() async {
 
   // InternetConnectionChecker só funciona em plataformas móveis
   if (!kIsWeb) {
-    sl.registerLazySingleton(() => InternetConnectionChecker());
+    sl.registerLazySingleton(() => InternetConnectionChecker.createInstance());
   }
 
   // Core

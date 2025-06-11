@@ -61,7 +61,9 @@ class User extends Equatable {
       type: userType,
       tipo: data['tipo'],
       staircoins: data['staircoins'] ?? 0,
-      turmas: data['turmas'] != null ? List<String>.from(data['turmas']) : [],
+      turmas: (data['turmas'] is List)
+          ? List<String>.from(data['turmas'].whereType<String>())
+          : [],
       createdAt: data['createdAt'] != null
           ? (data['createdAt'] as Timestamp).toDate()
           : null,
