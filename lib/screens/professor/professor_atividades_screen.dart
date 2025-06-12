@@ -18,28 +18,61 @@ class ProfessorAtividadesScreen extends StatefulWidget {
 class _ProfessorAtividadesScreenState extends State<ProfessorAtividadesScreen> {
   Turma? _turmaSelecionada;
   String? _ultimoTurmaIdBuscado;
+  bool _isLoadingTurmas = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _inicializarDados();
+    });
+  }
+
+  Future<void> _inicializarDados() async {
+    setState(() {
+      _isLoadingTurmas = true;
+    });
+
+    final turmaProvider = Provider.of<TurmaProvider>(context, listen: false);
+    await turmaProvider.recarregarTurmas();
+
+    final minhasTurmas = turmaProvider.getMinhasTurmas();
+    if (minhasTurmas.isNotEmpty) {
+      setState(() {
+        _turmaSelecionada = minhasTurmas.first;
+        _isLoadingTurmas = false;
+      });
+      _buscarAtividades();
+    } else {
+      setState(() {
+        _isLoadingTurmas = false;
+      });
+    }
+  }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final turmaProvider = Provider.of<TurmaProvider>(context);
-    final minhasTurmas = turmaProvider.getMinhasTurmas();
-    if (minhasTurmas.isNotEmpty) {
-      if (_turmaSelecionada == null ||
-          !minhasTurmas.contains(_turmaSelecionada)) {
-        _turmaSelecionada = minhasTurmas.first;
-      }
-      if (_turmaSelecionada != null &&
-          _turmaSelecionada!.id != _ultimoTurmaIdBuscado) {
-        _ultimoTurmaIdBuscado = _turmaSelecionada!.id;
-        _buscarAtividades();
+    if (!_isLoadingTurmas) {
+      final turmaProvider = Provider.of<TurmaProvider>(context);
+      final minhasTurmas = turmaProvider.getMinhasTurmas();
+
+      if (minhasTurmas.isNotEmpty) {
+        if (_turmaSelecionada == null) {
+          setState(() {
+            _turmaSelecionada = minhasTurmas.first;
+          });
+          _buscarAtividades();
+        }
       }
     }
   }
 
-  void _buscarAtividades() {
-    if (_turmaSelecionada != null) {
-      Provider.of<AtividadeProvider>(context, listen: false)
+  Future<void> _buscarAtividades() async {
+    if (_turmaSelecionada != null &&
+        _turmaSelecionada!.id != _ultimoTurmaIdBuscado) {
+      _ultimoTurmaIdBuscado = _turmaSelecionada!.id;
+      await Provider.of<AtividadeProvider>(context, listen: false)
           .fetchAtividadesByTurma(_turmaSelecionada!.id);
     }
   }
@@ -58,25 +91,29 @@ class _ProfessorAtividadesScreenState extends State<ProfessorAtividadesScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.all(16),
-            child: DropdownButtonFormField<Turma>(
-              value: _turmaSelecionada,
-              items: minhasTurmas.map((turma) {
-                return DropdownMenuItem<Turma>(
-                  value: turma,
-                  child: Text(turma.nome),
-                );
-              }).toList(),
-              onChanged: (turma) {
-                setState(() {
-                  _turmaSelecionada = turma;
-                });
-                _buscarAtividades();
-              },
-              decoration: const InputDecoration(
-                labelText: 'Selecione a Turma',
-                border: OutlineInputBorder(),
-              ),
-            ),
+            child: _isLoadingTurmas
+                ? const Center(child: CircularProgressIndicator())
+                : DropdownButtonFormField<Turma>(
+                    value: _turmaSelecionada,
+                    items: minhasTurmas.map((turma) {
+                      return DropdownMenuItem<Turma>(
+                        value: turma,
+                        child: Text(turma.nome),
+                      );
+                    }).toList(),
+                    onChanged: (turma) {
+                      if (turma != null && turma != _turmaSelecionada) {
+                        setState(() {
+                          _turmaSelecionada = turma;
+                        });
+                        _buscarAtividades();
+                      }
+                    },
+                    decoration: const InputDecoration(
+                      labelText: 'Selecione a Turma',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
           ),
           Expanded(
             child: isLoading
@@ -85,145 +122,156 @@ class _ProfessorAtividadesScreenState extends State<ProfessorAtividadesScreen> {
                     ? const Center(
                         child: Text(
                             'Nenhuma atividade encontrada para esta turma.'))
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: atividades.length,
-                        itemBuilder: (context, index) {
-                          final atividade = atividades[index];
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 16),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          atividade.titulo,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
+                    : RefreshIndicator(
+                        onRefresh: _buscarAtividades,
+                        child: ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: atividades.length,
+                          itemBuilder: (context, index) {
+                            final atividade = atividades[index];
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 16),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            atividade.titulo,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                      Flexible(
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 4,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: atividade.status ==
-                                                    AtividadeStatus.pendente
-                                                ? AppTheme.warningColor
-                                                    .withOpacity(0.2)
-                                                : atividade.status ==
-                                                        AtividadeStatus.entregue
-                                                    ? AppTheme.successColor
-                                                        .withOpacity(0.2)
-                                                    : AppTheme.errorColor
-                                                        .withOpacity(0.2),
-                                            borderRadius:
-                                                BorderRadius.circular(12),
-                                          ),
-                                          child: Text(
-                                            atividade.status ==
-                                                    AtividadeStatus.pendente
-                                                ? 'Pendente'
-                                                : atividade.status ==
-                                                        AtividadeStatus.entregue
-                                                    ? 'Entregue'
-                                                    : 'Atrasado',
-                                            style: TextStyle(
-                                              fontSize: 12,
+                                        Flexible(
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
+                                            ),
+                                            decoration: BoxDecoration(
                                               color: atividade.status ==
                                                       AtividadeStatus.pendente
                                                   ? AppTheme.warningColor
+                                                      .withOpacity(0.2)
                                                   : atividade.status ==
                                                           AtividadeStatus
                                                               .entregue
                                                       ? AppTheme.successColor
-                                                      : AppTheme.errorColor,
+                                                          .withOpacity(0.2)
+                                                      : AppTheme.errorColor
+                                                          .withOpacity(0.2),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                            child: Text(
+                                              atividade.status ==
+                                                      AtividadeStatus.pendente
+                                                  ? 'Pendente'
+                                                  : atividade.status ==
+                                                          AtividadeStatus
+                                                              .entregue
+                                                      ? 'Entregue'
+                                                      : 'Atrasado',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: atividade.status ==
+                                                        AtividadeStatus.pendente
+                                                    ? AppTheme.warningColor
+                                                    : atividade.status ==
+                                                            AtividadeStatus
+                                                                .entregue
+                                                        ? AppTheme.successColor
+                                                        : AppTheme.errorColor,
+                                              ),
                                             ),
                                           ),
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'Entrega: ${atividade.dataEntrega.toString().split(' ').first}',
-                                    style: const TextStyle(
-                                      color: AppTheme.mutedForegroundColor,
-                                      fontSize: 14,
+                                      ],
                                     ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Flexible(
-                                        child: Row(
-                                          children: [
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                horizontal: 8,
-                                                vertical: 4,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: AppTheme.primaryColor
-                                                    .withOpacity(0.1),
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                              ),
-                                              child: Text(
-                                                '${atividade.pontuacao} moedas',
-                                                style: const TextStyle(
-                                                  fontSize: 12,
-                                                  color: AppTheme.primaryColor,
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Entrega: ${atividade.dataEntrega.toString().split(' ').first}',
+                                      style: const TextStyle(
+                                        color: AppTheme.mutedForegroundColor,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Flexible(
+                                          child: Row(
+                                            children: [
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  horizontal: 8,
+                                                  vertical: 4,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: AppTheme.primaryColor
+                                                      .withOpacity(0.1),
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                ),
+                                                child: Text(
+                                                  '${atividade.pontuacao} moedas',
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                    color:
+                                                        AppTheme.primaryColor,
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Expanded(
-                                              child: Text(
-                                                'Turma: ${_turmaSelecionada?.nome ?? ''}',
-                                                style: const TextStyle(
-                                                  fontSize: 12,
-                                                  color: AppTheme
-                                                      .mutedForegroundColor,
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text(
+                                                  'Turma: ${_turmaSelecionada?.nome ?? ''}',
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                    color: AppTheme
+                                                        .mutedForegroundColor,
+                                                  ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
                                                 ),
-                                                overflow: TextOverflow.ellipsis,
                                               ),
-                                            ),
-                                          ],
+                                            ],
+                                          ),
                                         ),
-                                      ),
-                                      TextButton(
-                                        onPressed: () {
-                                          Navigator.of(context).push(
-                                            MaterialPageRoute(
-                                              builder: (_) =>
-                                                  CorrecaoEntregasScreen(
-                                                      atividade: atividade),
-                                            ),
-                                          );
-                                        },
-                                        child: const Text('Corrigir'),
-                                      ),
-                                    ],
-                                  ),
-                                ],
+                                        TextButton(
+                                          onPressed: () {
+                                            Navigator.of(context)
+                                                .push(
+                                                  MaterialPageRoute(
+                                                    builder: (_) =>
+                                                        CorrecaoEntregasScreen(
+                                                            atividade:
+                                                                atividade),
+                                                  ),
+                                                )
+                                                .then(
+                                                    (_) => _buscarAtividades());
+                                          },
+                                          child: const Text('Corrigir'),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          );
-                        },
+                            );
+                          },
+                        ),
                       ),
           ),
         ],

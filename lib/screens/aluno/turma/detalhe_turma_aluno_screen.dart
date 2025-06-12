@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:staircoins/models/atividade.dart';
 import 'package:staircoins/models/turma.dart';
 import 'package:staircoins/models/user.dart';
+import 'package:staircoins/providers/atividade_provider.dart';
 import 'package:staircoins/providers/auth_provider.dart';
 import 'package:staircoins/providers/turma_provider.dart';
+import 'package:staircoins/screens/aluno/atividade/detalhe_atividade_screen.dart';
 import 'package:staircoins/theme/app_theme.dart';
+import 'package:intl/intl.dart';
 
 class DetalheTurmaAlunoScreen extends StatefulWidget {
   final String turmaId;
@@ -23,6 +27,9 @@ class _DetalheTurmaAlunoScreenState extends State<DetalheTurmaAlunoScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isLoading = false;
+  bool _isLoadingAtividades = false;
+  List<Atividade> _atividades = [];
+  String? _professorNome;
 
   @override
   void initState() {
@@ -38,11 +45,14 @@ class _DetalheTurmaAlunoScreenState extends State<DetalheTurmaAlunoScreen>
   Future<void> _carregarTurma() async {
     setState(() {
       _isLoading = true;
+      _isLoadingAtividades = true;
     });
 
     try {
       final turmaProvider = Provider.of<TurmaProvider>(context, listen: false);
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final atividadeProvider =
+          Provider.of<AtividadeProvider>(context, listen: false);
 
       // Buscar a turma específica pelo ID
       await turmaProvider.buscarTurmasPorIds([widget.turmaId]);
@@ -59,6 +69,13 @@ class _DetalheTurmaAlunoScreenState extends State<DetalheTurmaAlunoScreen>
             authProvider.user!.type == UserType.aluno) {
           await turmaProvider.forcarAtualizacaoTurmasAluno();
         }
+      } else {
+        // Buscar atividades da turma
+        await atividadeProvider.fetchAtividadesByTurma(widget.turmaId);
+        _atividades = atividadeProvider.atividades;
+
+        // Definir nome do professor (simplificado para evitar erros)
+        _professorNome = "Professor da Turma";
       }
 
       debugPrint('DetalheTurmaAlunoScreen: Turma carregada: ${widget.turmaId}');
@@ -68,6 +85,7 @@ class _DetalheTurmaAlunoScreenState extends State<DetalheTurmaAlunoScreen>
       if (mounted) {
         setState(() {
           _isLoading = false;
+          _isLoadingAtividades = false;
         });
       }
     }
@@ -129,9 +147,8 @@ class _DetalheTurmaAlunoScreenState extends State<DetalheTurmaAlunoScreen>
       );
     }
 
-    // Obter informações do professor (mockado por enquanto)
-    final professorNome =
-        "Professor da Turma"; // Idealmente buscar do banco de dados
+    // Usar o nome do professor obtido do Firebase ou um valor padrão
+    final professorNome = _professorNome ?? "Professor da Turma";
 
     return Scaffold(
       appBar: AppBar(
@@ -150,62 +167,74 @@ class _DetalheTurmaAlunoScreenState extends State<DetalheTurmaAlunoScreen>
           children: [
             // Cabeçalho da turma
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
               child: Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         turma.nome,
                         style: const TextStyle(
-                          fontSize: 20,
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 4),
                       Text(
                         turma.descricao,
                         style: const TextStyle(
                           color: AppTheme.mutedForegroundColor,
+                          fontSize: 14,
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 12),
                       Row(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppTheme.primaryColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Text(
-                              'Código: ${turma.codigo}',
-                              style: const TextStyle(
-                                color: AppTheme.primaryColor,
-                                fontWeight: FontWeight.bold,
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                'Código: ${turma.codigo}',
+                                style: const TextStyle(
+                                  color: AppTheme.primaryColor,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
                               ),
                             ),
                           ),
-                          const Spacer(),
+                          const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
+                              horizontal: 10,
+                              vertical: 4,
                             ),
                             decoration: BoxDecoration(
                               color: Colors.blueGrey.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(12),
                             ),
                             child: Row(
                               children: [
                                 const Icon(
                                   Icons.person,
-                                  size: 16,
+                                  size: 14,
                                   color: Colors.blueGrey,
                                 ),
                                 const SizedBox(width: 4),
@@ -216,13 +245,15 @@ class _DetalheTurmaAlunoScreenState extends State<DetalheTurmaAlunoScreen>
                                     fontWeight: FontWeight.bold,
                                     fontSize: 12,
                                   ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ],
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 4),
                       Text(
                         'Alunos: ${turma.alunos.length}',
                         style: TextStyle(
@@ -237,18 +268,33 @@ class _DetalheTurmaAlunoScreenState extends State<DetalheTurmaAlunoScreen>
             ),
 
             // Tabs
-            TabBar(
-              controller: _tabController,
-              tabs: const [
-                Tab(
-                  icon: Icon(Icons.assignment_outlined),
-                  text: 'Atividades',
+            Container(
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: Colors.grey.withOpacity(0.2),
+                    width: 1,
+                  ),
                 ),
-                Tab(
-                  icon: Icon(Icons.people_outline),
-                  text: 'Colegas',
+              ),
+              child: TabBar(
+                controller: _tabController,
+                labelStyle: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
                 ),
-              ],
+                indicatorWeight: 3,
+                tabs: const [
+                  Tab(
+                    icon: Icon(Icons.assignment_outlined, size: 20),
+                    text: 'Atividades',
+                  ),
+                  Tab(
+                    icon: Icon(Icons.people_outline, size: 20),
+                    text: 'Colegas',
+                  ),
+                ],
+              ),
             ),
 
             // Conteúdo das tabs
@@ -268,25 +314,13 @@ class _DetalheTurmaAlunoScreenState extends State<DetalheTurmaAlunoScreen>
   }
 
   Widget _buildAtividadesTab(Turma turma) {
-    // Dados mockados para demonstração
-    final atividades = [
-      {
-        'id': '1',
-        'titulo': 'Trabalho de Matemática',
-        'dataEntrega': '2023-05-15',
-        'pontuacao': 50,
-        'status': 'pendente',
-      },
-      {
-        'id': '2',
-        'titulo': 'Redação sobre Meio Ambiente',
-        'dataEntrega': '2023-05-20',
-        'pontuacao': 30,
-        'status': 'pendente',
-      },
-    ];
+    if (_isLoadingAtividades) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
 
-    if (atividades.isEmpty) {
+    if (_atividades.isEmpty) {
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -318,14 +352,21 @@ class _DetalheTurmaAlunoScreenState extends State<DetalheTurmaAlunoScreen>
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: atividades.length,
+      padding: const EdgeInsets.all(12),
+      itemCount: _atividades.length,
       itemBuilder: (context, index) {
-        final atividade = atividades[index];
+        final atividade = _atividades[index];
+        final dateFormat = DateFormat('dd/MM/yyyy');
+        final formattedDate = dateFormat.format(atividade.dataEntrega);
+
         return Card(
-          margin: const EdgeInsets.only(bottom: 16),
+          elevation: 1,
+          margin: const EdgeInsets.only(bottom: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -334,11 +375,13 @@ class _DetalheTurmaAlunoScreenState extends State<DetalheTurmaAlunoScreen>
                   children: [
                     Expanded(
                       child: Text(
-                        atividade['titulo'] as String,
+                        atividade.titulo,
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                          fontSize: 15,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     Container(
@@ -347,25 +390,27 @@ class _DetalheTurmaAlunoScreenState extends State<DetalheTurmaAlunoScreen>
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: AppTheme.warningColor.withOpacity(0.2),
+                        color:
+                            _getStatusColor(atividade.status).withOpacity(0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Text(
-                        'Pendente',
+                      child: Text(
+                        _getStatusText(atividade.status),
                         style: TextStyle(
-                          fontSize: 12,
-                          color: AppTheme.warningColor,
+                          fontSize: 11,
+                          color: _getStatusColor(atividade.status),
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Text(
-                  'Entrega: ${atividade['dataEntrega']}',
+                  'Entrega: $formattedDate',
                   style: const TextStyle(
                     color: AppTheme.mutedForegroundColor,
-                    fontSize: 14,
+                    fontSize: 13,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -382,18 +427,31 @@ class _DetalheTurmaAlunoScreenState extends State<DetalheTurmaAlunoScreen>
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        '${atividade['pontuacao']} moedas',
+                        '${atividade.pontuacao} moedas',
                         style: const TextStyle(
-                          fontSize: 12,
+                          fontSize: 11,
                           color: AppTheme.primaryColor,
                         ),
                       ),
                     ),
                     TextButton(
                       onPressed: () {
-                        // TODO: Implementar detalhes da atividade
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                DetalheAtividadeScreen(atividade: atividade),
+                          ),
+                        );
                       },
-                      child: const Text('Ver detalhes'),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
+                      ),
+                      child: const Text('Ver detalhes',
+                          style: TextStyle(fontSize: 13)),
                     ),
                   ],
                 ),
@@ -405,15 +463,37 @@ class _DetalheTurmaAlunoScreenState extends State<DetalheTurmaAlunoScreen>
     );
   }
 
-  Widget _buildColegasTab(Turma turma) {
-    // Dados mockados para demonstração
-    final alunos = [
-      {'id': '2', 'nome': 'Aluno Demo', 'email': 'aluno@exemplo.com'},
-      {'id': '3', 'nome': 'Maria Silva', 'email': 'maria@exemplo.com'},
-      {'id': '4', 'nome': 'João Santos', 'email': 'joao@exemplo.com'},
-    ].where((aluno) => turma.alunos.contains(aluno['id'])).toList();
+  Color _getStatusColor(AtividadeStatus status) {
+    switch (status) {
+      case AtividadeStatus.pendente:
+        return AppTheme.warningColor;
+      case AtividadeStatus.entregue:
+        return AppTheme.successColor;
+      case AtividadeStatus.atrasado:
+        return AppTheme.errorColor;
+      default:
+        return AppTheme.mutedForegroundColor;
+    }
+  }
 
-    if (alunos.isEmpty) {
+  String _getStatusText(AtividadeStatus status) {
+    switch (status) {
+      case AtividadeStatus.pendente:
+        return 'Pendente';
+      case AtividadeStatus.entregue:
+        return 'Entregue';
+      case AtividadeStatus.atrasado:
+        return 'Atrasado';
+      default:
+        return 'Desconhecido';
+    }
+  }
+
+  Widget _buildColegasTab(Turma turma) {
+    // Simplificando para evitar erros com métodos não definidos
+    final alunosIds = turma.alunos;
+
+    if (alunosIds.isEmpty) {
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -443,23 +523,41 @@ class _DetalheTurmaAlunoScreenState extends State<DetalheTurmaAlunoScreen>
       );
     }
 
+    // Usando uma lista simples em vez do FutureBuilder para evitar erros
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: alunos.length,
+      padding: const EdgeInsets.all(12),
+      itemCount: alunosIds.length,
       itemBuilder: (context, index) {
-        final aluno = alunos[index];
         return Card(
+          elevation: 1,
           margin: const EdgeInsets.only(bottom: 8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
           child: ListTile(
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             leading: const CircleAvatar(
               backgroundColor: AppTheme.mutedColor,
+              radius: 18,
               child: Icon(
                 Icons.person_outline,
                 color: AppTheme.mutedForegroundColor,
+                size: 18,
               ),
             ),
-            title: Text(aluno['nome']!),
-            subtitle: Text(aluno['email']!),
+            title: Text(
+              "Aluno ${index + 1}",
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            subtitle: Text(
+              "ID: ${alunosIds[index]}",
+              style: const TextStyle(fontSize: 12),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         );
       },

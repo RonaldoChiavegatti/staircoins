@@ -3,12 +3,15 @@ import 'package:provider/provider.dart';
 import 'package:staircoins/models/turma.dart';
 import 'package:staircoins/providers/auth_provider.dart';
 import 'package:staircoins/providers/turma_provider.dart';
+import 'package:staircoins/providers/atividade_provider.dart';
 import 'package:staircoins/screens/professor/professor_atividades_screen.dart';
 import 'package:staircoins/screens/professor/professor_produtos_screen.dart';
 import 'package:staircoins/screens/professor/cadastro_produto_screen.dart';
 import 'package:staircoins/screens/professor/professor_turmas_screen.dart';
 import 'package:staircoins/screens/professor/turma/nova_turma_screen.dart';
+import 'package:staircoins/screens/professor/turma/detalhe_turma_screen.dart';
 import 'package:staircoins/screens/professor/atividade/nova_atividade_screen.dart';
+import 'package:staircoins/screens/professor/atividade/correcao_entregas_screen.dart';
 import 'package:staircoins/theme/app_theme.dart';
 import 'package:staircoins/widgets/app_drawer.dart';
 import 'package:staircoins/widgets/stat_card.dart';
@@ -156,6 +159,7 @@ class _ProfessorDashboardScreenState extends State<ProfessorDashboardScreen> {
     // Recarregar turmas quando a tela for exibida
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _carregarTurmas();
+      _carregarAtividades();
     });
   }
 
@@ -164,39 +168,46 @@ class _ProfessorDashboardScreenState extends State<ProfessorDashboardScreen> {
     await turmaProvider.recarregarTurmas();
   }
 
+  Future<void> _carregarAtividades() async {
+    final atividadeProvider =
+        Provider.of<AtividadeProvider>(context, listen: false);
+    final turmaProvider = Provider.of<TurmaProvider>(context, listen: false);
+    final minhasTurmas = turmaProvider.getMinhasTurmas();
+    if (minhasTurmas.isNotEmpty) {
+      await atividadeProvider.fetchAtividadesByTurma(minhasTurmas.first.id);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final turmaProvider = Provider.of<TurmaProvider>(context);
+    final atividadeProvider = Provider.of<AtividadeProvider>(context);
     final user = authProvider.user;
     final minhasTurmas = turmaProvider.getMinhasTurmas();
     final isLoading = turmaProvider.isLoading;
+    final atividades = atividadeProvider.atividades;
 
-    // Dados mockados para demonstração
+    // Dados reais para estatísticas
     final stats = {
       'totalAlunos': minhasTurmas.fold<int>(
           0, (prev, turma) => prev + turma.alunos.length),
-      'atividadesAtivas': 5,
-      'produtosCadastrados': 12,
+      'atividadesAtivas': atividades.length,
+      'produtosCadastrados':
+          12, // Pode ser substituído por dados reais se disponível
     };
 
-    // Atividades recentes (mockadas)
-    final atividadesRecentes = [
-      {
-        'id': '1',
-        'titulo': 'Trabalho de Matemática',
-        'dataEntrega': '2023-05-15',
-        'pontuacao': 50,
-        'status': 'ativa',
-      },
-      {
-        'id': '2',
-        'titulo': 'Redação sobre Meio Ambiente',
-        'dataEntrega': '2023-05-20',
-        'pontuacao': 30,
-        'status': 'ativa',
-      },
-    ];
+    // Usar atividades reais do Firebase
+    final atividadesRecentes = atividades
+        .take(2)
+        .map((a) => {
+              'id': a.id,
+              'titulo': a.titulo,
+              'dataEntrega': a.dataEntrega.toString().split(' ').first,
+              'pontuacao': a.pontuacao,
+              'status': a.status.toString().split('.').last,
+            })
+        .toList();
 
     return RefreshIndicator(
       onRefresh: _carregarTurmas,
@@ -436,7 +447,18 @@ class _ProfessorDashboardScreenState extends State<ProfessorDashboardScreen> {
                             ),
                             TextButton(
                               onPressed: () {
-                                // TODO: Implementar detalhes da atividade
+                                // Navegar para a tela de correção da atividade
+                                final atividadeObj =
+                                    atividadeProvider.getAtividadeById(
+                                        atividade['id'] as String);
+                                if (atividadeObj != null) {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => CorrecaoEntregasScreen(
+                                          atividade: atividadeObj),
+                                    ),
+                                  );
+                                }
                               },
                               child: const Text('Ver detalhes'),
                             ),
@@ -458,7 +480,14 @@ class _ProfessorDashboardScreenState extends State<ProfessorDashboardScreen> {
     return Card(
       child: InkWell(
         onTap: () {
-          // TODO: Implementar detalhes da turma
+          // Navegar para a tela de detalhes da turma
+          Navigator.of(context)
+              .push(
+                MaterialPageRoute(
+                  builder: (_) => DetalheTurmaScreen(turmaId: turma.id),
+                ),
+              )
+              .then((_) => _carregarTurmas());
         },
         borderRadius: BorderRadius.circular(16),
         child: Padding(

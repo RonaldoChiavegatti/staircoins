@@ -80,11 +80,15 @@ class _AlunoProdutosScreenState extends State<AlunoProdutosScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Catálogo de Produtos',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
+                        const Expanded(
+                          child: Text(
+                            'Catálogo de Produtos',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         Container(
@@ -117,9 +121,9 @@ class _AlunoProdutosScreenState extends State<AlunoProdutosScreen> {
                         gridDelegate:
                             const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 2,
-                          crossAxisSpacing: 16,
+                          crossAxisSpacing: 12,
                           mainAxisSpacing: 16,
-                          childAspectRatio: 0.75,
+                          childAspectRatio: 0.55,
                         ),
                         itemCount: produtos.length,
                         itemBuilder: (context, index) {
@@ -155,93 +159,152 @@ class _AlunoProdutosScreenState extends State<AlunoProdutosScreen> {
   Widget _buildProdutoCard(
       BuildContext context, Produto produto, int moedas, String? alunoId) {
     final esgotado = produto.quantidade == 0;
+    final temSaldo = moedas >= produto.preco;
+
     return Card(
-      elevation: 4,
+      elevation: 2,
+      margin: const EdgeInsets.only(bottom: 4),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            height: 120,
-            decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.2),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
-              ),
-            ),
-            child: produto.imagem != null
-                ? Image.asset(produto.imagem!, fit: BoxFit.cover)
-                : Center(
-                    child: Icon(
-                      Icons.card_giftcard,
-                      size: 60,
-                      color: AppTheme.primaryColor,
+          // Imagem do produto
+          AspectRatio(
+            aspectRatio: 1.5,
+            child: Container(
+              width: double.infinity,
+              color: AppTheme.primaryColor.withOpacity(0.1),
+              child: produto.imagem != null && produto.imagem!.isNotEmpty
+                  ? Image.asset(
+                      produto.imagem!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Center(
+                        child: Icon(
+                          Icons.card_giftcard,
+                          size: 48,
+                          color: AppTheme.primaryColor,
+                        ),
+                      ),
+                    )
+                  : Center(
+                      child: Icon(
+                        Icons.card_giftcard,
+                        size: 48,
+                        color: AppTheme.primaryColor,
+                      ),
                     ),
-                  ),
+            ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  produto.nome,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+
+          // Informações do produto
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Nome e descrição
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        produto.nome,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        produto.descricao,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  produto.descricao,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.monetization_on,
-                            color: AppTheme.primaryColor, size: 16),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${produto.preco}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.primaryColor,
+
+                  // Preço e botão
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.monetization_on,
+                                  color: AppTheme.primaryColor, size: 16),
+                              const SizedBox(width: 2),
+                              Text(
+                                '${produto.preco}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.primaryColor,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                          esgotado
+                              ? const Text('Esgotado',
+                                  style: TextStyle(
+                                      color: Colors.red,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12))
+                              : Text(
+                                  temSaldo ? 'Disponível' : 'Insuficiente',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: temSaldo
+                                        ? AppTheme.successColor
+                                        : Colors.orange,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        height: 32,
+                        margin: const EdgeInsets.only(bottom: 4),
+                        child: ElevatedButton(
+                          onPressed: (esgotado || !temSaldo)
+                              ? null
+                              : () {
+                                  _showComprarDialog(
+                                      context, produto, moedas, alunoId);
+                                },
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            textStyle: const TextStyle(fontSize: 13),
+                            minimumSize: const Size.fromHeight(32),
+                          ),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              esgotado
+                                  ? 'Esgotado'
+                                  : temSaldo
+                                      ? 'Comprar'
+                                      : 'Moedas insuficientes',
+                            ),
                           ),
                         ),
-                      ],
-                    ),
-                    esgotado
-                        ? const Text('Esgotado',
-                            style: TextStyle(
-                                color: Colors.red, fontWeight: FontWeight.bold))
-                        : IconButton(
-                            onPressed: () {
-                              _showComprarDialog(
-                                  context, produto, moedas, alunoId);
-                            },
-                            icon: const Icon(Icons.shopping_cart,
-                                color: AppTheme.primaryColor),
-                            iconSize: 20,
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                          ),
-                  ],
-                ),
-              ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ],

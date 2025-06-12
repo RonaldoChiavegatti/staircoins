@@ -167,16 +167,28 @@ class AtividadeProvider with ChangeNotifier {
     _isLoading = true;
     _atividades = [];
     notifyListeners();
+
+    debugPrint('AtividadeProvider: Buscando atividades para turma $turmaId');
+
     try {
       final snapshot = await FirebaseFirestore.instance
           .collection('atividades')
           .where('turmaId', isEqualTo: turmaId)
           .get();
+
+      debugPrint(
+          'AtividadeProvider: Encontradas ${snapshot.docs.length} atividades');
+
       _atividades = snapshot.docs.map((doc) {
         final data = doc.data();
         data['id'] = doc.id;
         return Atividade.fromJson(data);
       }).toList();
+
+      // Ordena as atividades por data de entrega (mais próximas primeiro)
+      _atividades.sort((a, b) => a.dataEntrega.compareTo(b.dataEntrega));
+
+      debugPrint('AtividadeProvider: Atividades carregadas com sucesso');
     } catch (e) {
       debugPrint('Erro ao buscar atividades do Firestore: $e');
       _atividades = [];

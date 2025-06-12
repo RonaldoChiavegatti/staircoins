@@ -7,6 +7,7 @@ import 'package:staircoins/screens/aluno/aluno_atividades_screen.dart';
 import 'package:staircoins/screens/aluno/aluno_produtos_screen.dart';
 import 'package:staircoins/screens/aluno/aluno_turmas_screen.dart';
 import 'package:staircoins/screens/aluno/turma/entrar_turma_screen.dart';
+import 'package:staircoins/screens/aluno/turma/detalhe_turma_aluno_screen.dart';
 import 'package:staircoins/theme/app_theme.dart';
 import 'package:staircoins/widgets/app_drawer.dart';
 
@@ -571,8 +572,8 @@ class _AlunoDashboardScreenState extends State<AlunoDashboardScreen> {
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
-                childAspectRatio: 0.75,
-                crossAxisSpacing: 16,
+                childAspectRatio: 0.55,
+                crossAxisSpacing: 12,
                 mainAxisSpacing: 16,
               ),
               itemCount: produtosDestaque.length,
@@ -582,18 +583,24 @@ class _AlunoDashboardScreenState extends State<AlunoDashboardScreen> {
 
                 return Card(
                   clipBehavior: Clip.antiAlias,
+                  elevation: 2,
+                  margin: const EdgeInsets.only(bottom: 4),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Imagem
-                      Expanded(
+                      AspectRatio(
+                        aspectRatio: 1.5,
                         child: Container(
                           width: double.infinity,
-                          color: AppTheme.mutedColor,
+                          color: AppTheme.primaryColor.withOpacity(0.1),
                           child: const Center(
                             child: Icon(
                               Icons.image_outlined,
-                              size: 48,
+                              size: 40,
                               color: AppTheme.mutedForegroundColor,
                             ),
                           ),
@@ -601,60 +608,80 @@ class _AlunoDashboardScreenState extends State<AlunoDashboardScreen> {
                       ),
 
                       // Informações
-                      Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              produto['nome'] as String,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                produto['nome'] as String,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  '${produto['preco']} 🪙',
-                                  style: const TextStyle(
-                                    color: AppTheme.primaryColor,
-                                    fontWeight: FontWeight.bold,
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        '${produto['preco']} 🪙',
+                                        style: const TextStyle(
+                                          color: AppTheme.primaryColor,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      Text(
+                                        temSaldo
+                                            ? 'Disponível'
+                                            : 'Faltam ${(produto['preco'] as int) - coins}',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: temSaldo
+                                              ? AppTheme.successColor
+                                              : Colors.orange,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ),
-                                Text(
-                                  temSaldo
-                                      ? 'Disponível'
-                                      : 'Faltam ${(produto['preco'] as int) - coins}',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: temSaldo
-                                        ? AppTheme.successColor
-                                        : AppTheme.mutedForegroundColor,
+                                  const SizedBox(height: 8),
+                                  Container(
+                                    height: 32,
+                                    margin: const EdgeInsets.only(bottom: 4),
+                                    child: ElevatedButton(
+                                      onPressed: temSaldo
+                                          ? () {
+                                              // TODO: Implementar troca de produto
+                                            }
+                                          : null,
+                                      style: ElevatedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 4),
+                                        textStyle:
+                                            const TextStyle(fontSize: 13),
+                                        minimumSize: const Size.fromHeight(32),
+                                      ),
+                                      child: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        child: Text(temSaldo
+                                            ? 'Trocar'
+                                            : 'Moedas insuficientes'),
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            ElevatedButton(
-                              onPressed: temSaldo
-                                  ? () {
-                                      // TODO: Implementar troca de produto
-                                    }
-                                  : null,
-                              style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 0,
-                                  vertical: 0,
-                                ),
+                                ],
                               ),
-                              child: Text(
-                                  temSaldo ? 'Trocar' : 'Moedas insuficientes'),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -672,7 +699,14 @@ class _AlunoDashboardScreenState extends State<AlunoDashboardScreen> {
     return Card(
       child: InkWell(
         onTap: () {
-          // TODO: Implementar detalhes da turma
+          // Navegar para a tela de detalhes da turma
+          Navigator.of(context)
+              .push(
+                MaterialPageRoute(
+                  builder: (_) => DetalheTurmaAlunoScreen(turmaId: turma.id),
+                ),
+              )
+              .then((_) => _carregarTurmas());
         },
         borderRadius: BorderRadius.circular(16),
         child: Padding(
