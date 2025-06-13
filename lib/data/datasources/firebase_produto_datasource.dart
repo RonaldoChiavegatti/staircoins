@@ -107,4 +107,111 @@ class FirebaseProdutoDatasource {
       return codigoTroca;
     });
   }
+
+  Future<List<Produto>> getProdutosPorTurmas(
+      List<String> turmasIds, List<String> professoresIds) async {
+    // Se a lista de IDs estiver vazia, retorne lista vazia
+    if (turmasIds.isEmpty) {
+      print('Lista de turmasIds vazia, retornando lista vazia');
+      return [];
+    }
+
+    List<Produto> produtosPorTurma = [];
+    List<Produto> produtosPorProfessor = [];
+
+    try {
+      print('==== INÍCIO DO LOG DE FILTRAGEM DE PRODUTOS ====');
+      print('Filtrando por turmas: $turmasIds');
+      print('Filtrando por professores: $professoresIds');
+
+      // PRIMEIRA CONSULTA: Produtos por turma
+      try {
+        if (turmasIds.isNotEmpty) {
+          for (int i = 0; i < turmasIds.length; i += 10) {
+            // Firestore limita a 10 valores em whereIn
+            final batchTurmas = turmasIds.sublist(
+                i, i + 10 > turmasIds.length ? turmasIds.length : i + 10);
+
+            print('Consultando batch de turmas ${i ~/ 10 + 1}: $batchTurmas');
+
+            final snapshot =
+                await produtosRef.where('turmaId', whereIn: batchTurmas).get();
+
+            print(
+                'Encontrados ${snapshot.docs.length} produtos para o batch de turmas ${i ~/ 10 + 1}');
+
+            // Adicionar produtos encontrados por turma
+            for (var doc in snapshot.docs) {
+              final data = doc.data() as Map<String, dynamic>;
+              data['id'] = doc.id;
+
+              final quantidade = data['quantidade'] ?? 0;
+              if (quantidade > 0) {
+                produtosPorTurma.add(Produto.fromJson(data));
+                print('Produto adicionado por turma: ${data['nome']}');
+              }
+            }
+          }
+        }
+      } catch (e) {
+        print('Erro na consulta por turmas: $e');
+      }
+
+      // SEGUNDA CONSULTA: Produtos por professor
+      try {
+        if (professoresIds.isNotEmpty) {
+          for (int i = 0; i < professoresIds.length; i += 10) {
+            // Firestore limita a 10 valores em whereIn
+            final batchProfs = professoresIds.sublist(
+                i,
+                i + 10 > professoresIds.length
+                    ? professoresIds.length
+                    : i + 10);
+
+            print(
+                'Consultando batch de professores ${i ~/ 10 + 1}: $batchProfs');
+
+            final snapshot = await produtosRef
+                .where('professorId', whereIn: batchProfs)
+                .get();
+
+            print(
+                'Encontrados ${snapshot.docs.length} produtos para o batch de professores ${i ~/ 10 + 1}');
+
+            // Adicionar produtos encontrados por professor
+            for (var doc in snapshot.docs) {
+              final data = doc.data() as Map<String, dynamic>;
+              data['id'] = doc.id;
+
+              final quantidade = data['quantidade'] ?? 0;
+              if (quantidade > 0) {
+                // Verificar se o produto já foi adicionado (para evitar duplicatas)
+                if (!produtosPorTurma.any((p) => p.id == doc.id)) {
+                  produtosPorProfessor.add(Produto.fromJson(data));
+                  print('Produto adicionado por professor: ${data['nome']}');
+                } else {
+                  print('Produto ignorado (duplicata): ${data['nome']}');
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        print('Erro na consulta por professores: $e');
+      }
+
+      // Combinar os resultados
+      final todosProdutos = [...produtosPorTurma, ...produtosPorProfessor];
+
+      print('Total de produtos por turma: ${produtosPorTurma.length}');
+      print('Total de produtos por professor: ${produtosPorProfessor.length}');
+      print('Total de produtos únicos: ${todosProdutos.length}');
+      print('==== FIM DO LOG DE FILTRAGEM DE PRODUTOS ====');
+
+      return todosProdutos;
+    } catch (e) {
+      print('Erro geral na busca de produtos: $e');
+      return [];
+    }
+  }
 }

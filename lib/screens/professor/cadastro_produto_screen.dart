@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:staircoins/providers/produto_provider.dart';
+import 'package:staircoins/providers/auth_provider.dart';
+import 'package:staircoins/providers/turma_provider.dart';
 import 'package:staircoins/theme/app_theme.dart';
 import 'package:staircoins/models/produto.dart';
+import 'package:staircoins/models/turma.dart';
 
 class CadastroProdutoScreen extends StatefulWidget {
   final Produto? produto;
@@ -20,6 +23,10 @@ class _CadastroProdutoScreenState extends State<CadastroProdutoScreen> {
   final _quantidadeController = TextEditingController();
   final _pesoTamanhoController = TextEditingController();
 
+  String? _selectedTurmaId;
+  List<Turma> _turmasProfessor = [];
+  bool _isLoadingTurmas = false;
+
   @override
   void initState() {
     super.initState();
@@ -29,6 +36,41 @@ class _CadastroProdutoScreenState extends State<CadastroProdutoScreen> {
       _precoController.text = widget.produto!.preco.toString();
       _quantidadeController.text = widget.produto!.quantidade.toString();
       _pesoTamanhoController.text = widget.produto!.pesoTamanho ?? '';
+      _selectedTurmaId = widget.produto!.turmaId;
+    }
+
+    // Carregar turmas do professor
+    _carregarTurmas();
+  }
+
+  Future<void> _carregarTurmas() async {
+    setState(() {
+      _isLoadingTurmas = true;
+    });
+
+    try {
+      final turmaProvider = Provider.of<TurmaProvider>(context, listen: false);
+      await turmaProvider.init();
+      final turmas = turmaProvider.getTurmasProfessor();
+
+      setState(() {
+        _turmasProfessor = turmas;
+        _isLoadingTurmas = false;
+
+        // Se existir mais de uma turma e não tiver turma selecionada,
+        // seleciona a primeira por padrão
+        if (_selectedTurmaId == null && _turmasProfessor.isNotEmpty) {
+          _selectedTurmaId = _turmasProfessor.first.id;
+        }
+      });
+    } catch (e) {
+      setState(() {
+        _isLoadingTurmas = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao carregar turmas: $e')),
+      );
     }
   }
 
@@ -45,7 +87,24 @@ class _CadastroProdutoScreenState extends State<CadastroProdutoScreen> {
   void _salvarProduto() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
+
+      // Verificar se o professor selecionou uma turma
+      if (_selectedTurmaId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Por favor, selecione uma turma')),
+        );
+        return;
+      }
+
       try {
+        // Obter ID do professor atual
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        final professorId = authProvider.user?.id;
+
+        if (professorId == null) {
+          throw Exception('Não foi possível identificar o professor');
+        }
+
         if (widget.produto == null) {
           await Provider.of<ProdutoProvider>(context, listen: false)
               .adicionarProduto(
@@ -54,6 +113,8 @@ class _CadastroProdutoScreenState extends State<CadastroProdutoScreen> {
             preco: int.parse(_precoController.text),
             quantidade: int.parse(_quantidadeController.text),
             pesoTamanho: _pesoTamanhoController.text,
+            professorId: professorId,
+            turmaId: _selectedTurmaId!,
           );
         } else {
           final produtoEditado = widget.produto!.copyWith(
@@ -62,6 +123,8 @@ class _CadastroProdutoScreenState extends State<CadastroProdutoScreen> {
             preco: int.parse(_precoController.text),
             quantidade: int.parse(_quantidadeController.text),
             pesoTamanho: _pesoTamanhoController.text,
+            professorId: professorId,
+            turmaId: _selectedTurmaId!,
           );
           await Provider.of<ProdutoProvider>(context, listen: false)
               .editarProduto(produtoEditado);
@@ -179,6 +242,38 @@ class _CadastroProdutoScreenState extends State<CadastroProdutoScreen> {
                   return null;
                 },
               ),
+              const SizedBox(height: 16),
+
+              // Dropdown para seleção de turma
+              _isLoadingTurmas
+                  ? const Center(child: CircularProgressIndicator())
+                  : DropdownButtonFormField<String>(
+                      decoration: InputDecoration(
+                        labelText: 'Selecione a Turma',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      value: _selectedTurmaId,
+                      items: _turmasProfessor.map((turma) {
+                        return DropdownMenuItem<String>(
+                          value: turma.id,
+                          child: Text(turma.nome),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        setState(() {
+                          _selectedTurmaId = newValue;
+                        });
+                      },
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Por favor, selecione uma turma';
+                        }
+                        return null;
+                      },
+                    ),
+
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: Provider.of<ProdutoProvider>(context).isLoading

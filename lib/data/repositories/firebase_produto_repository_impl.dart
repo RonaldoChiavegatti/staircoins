@@ -90,6 +90,19 @@ class FirebaseProdutoRepositoryImpl implements ProdutoRepository {
     }
   }
 
+  @override
+  Future<Either<Exception, List<Produto>>> getProdutosPorTurmas(
+      List<String> turmasIds,
+      {List<String> professoresIds = const []}) async {
+    try {
+      final produtos =
+          await datasource.getProdutosPorTurmas(turmasIds, professoresIds);
+      return Right(produtos);
+    } catch (e) {
+      return Left(Exception(e.toString()));
+    }
+  }
+
   String _gerarCodigoTroca() {
     const prefixo = "STC";
     const caracteres = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";

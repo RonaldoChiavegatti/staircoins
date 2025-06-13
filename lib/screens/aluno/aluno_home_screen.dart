@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:staircoins/models/turma.dart';
+import 'package:staircoins/models/atividade.dart';
+import 'package:staircoins/models/produto.dart';
 import 'package:staircoins/providers/auth_provider.dart';
 import 'package:staircoins/providers/turma_provider.dart';
+import 'package:staircoins/providers/atividade_provider.dart';
+import 'package:staircoins/providers/produto_provider.dart';
 import 'package:staircoins/screens/aluno/aluno_atividades_screen.dart';
 import 'package:staircoins/screens/aluno/aluno_produtos_screen.dart';
 import 'package:staircoins/screens/aluno/aluno_turmas_screen.dart';
@@ -83,100 +87,120 @@ class AlunoDashboardScreen extends StatefulWidget {
 
 class _AlunoDashboardScreenState extends State<AlunoDashboardScreen> {
   bool _isLoading = false;
+  List<Atividade> _atividadesPendentes = [];
+  List<Produto> _produtosDestaque = [];
 
   @override
   void initState() {
     super.initState();
-    // Recarregar turmas quando a tela for exibida
+    // Recarregar turmas e atividades quando a tela for exibida
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _carregarTurmas();
+      _carregarDados();
     });
   }
 
-  Future<void> _carregarTurmas() async {
+  Future<void> _carregarDados() async {
     setState(() {
       _isLoading = true;
+      _produtosDestaque = []; // Limpar produtos antigos
     });
 
     try {
       final turmaProvider = Provider.of<TurmaProvider>(context, listen: false);
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final atividadeProvider =
+          Provider.of<AtividadeProvider>(context, listen: false);
+      final produtoProvider =
+          Provider.of<ProdutoProvider>(context, listen: false);
 
       if (authProvider.isAuthenticated) {
         final user = authProvider.user;
         debugPrint(
-            'AlunoDashboardScreen: Carregando turmas para o aluno: ${user?.id}');
-        debugPrint(
-            'AlunoDashboardScreen: Turmas associadas ao usuário: ${user?.turmas}');
+            'AlunoDashboardScreen: Carregando dados para o aluno: ${user?.id}');
 
         if (user != null && user.turmas.isNotEmpty) {
-          debugPrint(
-              'AlunoDashboardScreen: Aluno tem ${user.turmas.length} turmas associadas: ${user.turmas}');
-
-          // Primeiro recarregar todas as turmas para garantir dados atualizados
+          // Carregar turmas - forçar atualização completa
           await turmaProvider.recarregarTurmas();
-
-          // Depois buscar especificamente as turmas do usuário
           await turmaProvider.buscarTurmasPorIds(user.turmas);
 
-          // Verificar se as turmas foram carregadas corretamente
-          final turmasCarregadas = turmaProvider.getTurmasAluno();
-          debugPrint(
-              'AlunoDashboardScreen: Turmas carregadas: ${turmasCarregadas.length}');
-
-          // Listar as turmas carregadas
-          for (var turma in turmasCarregadas) {
-            debugPrint(
-                'AlunoDashboardScreen: Turma carregada: ${turma.id} - ${turma.nome} - ${turma.codigo}');
+          // Carregar atividades de todas as turmas do aluno
+          _atividadesPendentes = [];
+          for (var turmaId in user.turmas) {
+            await atividadeProvider.fetchAtividadesByTurma(turmaId);
+            final atividadesTurma = atividadeProvider.atividades
+                .where((a) => a.status == AtividadeStatus.pendente)
+                .toList();
+            _atividadesPendentes.addAll(atividadesTurma);
           }
 
-          // Verificar todas as turmas disponíveis
-          final todasTurmas = turmaProvider.turmas;
-          debugPrint(
-              'AlunoDashboardScreen: Total de turmas disponíveis: ${todasTurmas.length}');
-          for (var turma in todasTurmas) {
-            debugPrint(
-                'AlunoDashboardScreen: Turma disponível: ${turma.id} - ${turma.nome} - ${turma.codigo}');
+          // Ordenar atividades por data de entrega
+          _atividadesPendentes
+              .sort((a, b) => a.dataEntrega.compareTo(b.dataEntrega));
+
+          // Limitar a 3 atividades pendentes mais próximas
+          if (_atividadesPendentes.length > 3) {
+            _atividadesPendentes = _atividadesPendentes.sublist(0, 3);
           }
 
-          // Verificar se todas as turmas do usuário foram carregadas
-          final turmasNaoCarregadas = user.turmas
-              .where((turmaId) => !turmasCarregadas.any((t) => t.id == turmaId))
-              .toList();
+          // Buscar turmas do aluno para obter os IDs dos professores
+          final turmas = turmaProvider.getTurmasAluno();
+          final professoresIds =
+              turmas.map((t) => t.professorId).toSet().toList();
 
-          if (turmasNaoCarregadas.isNotEmpty) {
+          debugPrint('AlunoDashboardScreen: Turmas do aluno: ${turmas.length}');
+          for (var turma in turmas) {
             debugPrint(
-                'AlunoDashboardScreen: Algumas turmas não foram carregadas: $turmasNaoCarregadas');
+                'AlunoDashboardScreen: Turma: ${turma.id} - ${turma.nome} - Professor: ${turma.professorId}');
+          }
 
-            // Usar o método de atualização forçada para garantir que todas as turmas sejam carregadas
-            debugPrint(
-                'AlunoDashboardScreen: Iniciando atualização forçada das turmas');
-            await turmaProvider.forcarAtualizacaoTurmasAluno();
+          debugPrint(
+              'AlunoDashboardScreen: Professores das turmas: $professoresIds');
 
-            // Verificar novamente
-            final turmasAtualizadas = turmaProvider.getTurmasAluno();
+          // Verificar se temos professores
+          if (professoresIds.isEmpty) {
             debugPrint(
-                'AlunoDashboardScreen: Turmas após atualização forçada: ${turmasAtualizadas.length}');
+                'ALERTA: Nenhum professor encontrado para as turmas do aluno!');
+          }
+
+          try {
+            // Primeiro recarregar todos os produtos para garantir dados atualizados
+            await produtoProvider.carregarProdutos();
+
+            debugPrint(
+                'AlunoDashboardScreen: Buscando produtos das turmas do aluno e seus professores');
+
+            final produtosTurma = await produtoProvider.buscarProdutosPorTurmas(
+                user.turmas,
+                professoresIds: professoresIds);
+
+            debugPrint(
+                'AlunoDashboardScreen: Encontrados ${produtosTurma.length} produtos para as turmas do aluno');
+            for (var produto in produtosTurma) {
+              debugPrint(
+                  'AlunoDashboardScreen: Produto: ${produto.nome}, turmaId: ${produto.turmaId}, professorId: ${produto.professorId}');
+            }
+
+            _produtosDestaque = produtosTurma;
+
+            // Ordenar e limitar produtos
+            _produtosDestaque.sort((a, b) => a.preco.compareTo(b.preco));
+            if (_produtosDestaque.length > 4) {
+              _produtosDestaque = _produtosDestaque.sublist(0, 4);
+            }
+
+            debugPrint(
+                'AlunoDashboardScreen: Total de ${_produtosDestaque.length} produtos em destaque');
+          } catch (e) {
+            debugPrint('AlunoDashboardScreen: Erro ao buscar produtos: $e');
           }
         } else {
-          debugPrint(
-              'AlunoDashboardScreen: Aluno não tem turmas associadas, recarregando todas');
-          await turmaProvider.recarregarTurmas();
-        }
-
-        // Verificar as turmas carregadas
-        final turmasAluno = turmaProvider.getTurmasAluno();
-        debugPrint(
-            'AlunoDashboardScreen: Turmas carregadas: ${turmasAluno.length}');
-
-        // Listar as turmas carregadas para debug
-        for (var turma in turmasAluno) {
-          debugPrint(
-              'AlunoDashboardScreen: Turma carregada: ${turma.id} - ${turma.nome} - ${turma.codigo}');
+          debugPrint('AlunoDashboardScreen: Aluno não está em nenhuma turma');
+          _atividadesPendentes = [];
+          _produtosDestaque = [];
         }
       }
     } catch (e) {
-      debugPrint('AlunoDashboardScreen: Erro ao carregar turmas: $e');
+      debugPrint('AlunoDashboardScreen: Erro ao carregar dados: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -198,43 +222,8 @@ class _AlunoDashboardScreenState extends State<AlunoDashboardScreen> {
     const proximaMeta = 200;
     final progressoMeta = (coins / proximaMeta) * 100;
 
-    // Dados mockados para demonstração
-    final atividadesPendentes = [
-      {
-        'id': '1',
-        'titulo': 'Trabalho de Matemática',
-        'dataEntrega': '2023-05-15',
-        'pontuacao': 50,
-        'status': 'pendente',
-      },
-      {
-        'id': '2',
-        'titulo': 'Redação sobre Meio Ambiente',
-        'dataEntrega': '2023-05-20',
-        'pontuacao': 30,
-        'status': 'pendente',
-      },
-    ];
-
-    final produtosDestaque = [
-      {
-        'id': '1',
-        'nome': 'Caneta Personalizada',
-        'descricao': 'Caneta com o logo da escola',
-        'preco': 50,
-        'imagem': 'assets/images/caneta.png',
-      },
-      {
-        'id': '2',
-        'nome': 'Caderno Exclusivo',
-        'descricao': 'Caderno capa dura com 100 folhas',
-        'preco': 150,
-        'imagem': 'assets/images/caderno.png',
-      },
-    ];
-
     return RefreshIndicator(
-      onRefresh: _carregarTurmas,
+      onRefresh: _carregarDados,
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -386,7 +375,7 @@ class _AlunoDashboardScreenState extends State<AlunoDashboardScreen> {
                                   builder: (_) => const EntrarTurmaScreen(),
                                 ),
                               )
-                              .then((_) => _carregarTurmas());
+                              .then((_) => _carregarDados());
                         },
                         child: const Text('Entrar em uma Turma'),
                       ),
@@ -431,7 +420,7 @@ class _AlunoDashboardScreenState extends State<AlunoDashboardScreen> {
             ),
             const SizedBox(height: 8),
 
-            if (atividadesPendentes.isEmpty)
+            if (_atividadesPendentes.isEmpty)
               const Card(
                 color: AppTheme.mutedColor,
                 child: Padding(
@@ -458,9 +447,9 @@ class _AlunoDashboardScreenState extends State<AlunoDashboardScreen> {
               ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: atividadesPendentes.length,
+                itemCount: _atividadesPendentes.length,
                 itemBuilder: (context, index) {
-                  final atividade = atividadesPendentes[index];
+                  final atividade = _atividadesPendentes[index];
                   return Card(
                     child: Padding(
                       padding: const EdgeInsets.all(16),
@@ -472,7 +461,7 @@ class _AlunoDashboardScreenState extends State<AlunoDashboardScreen> {
                             children: [
                               Expanded(
                                 child: Text(
-                                  atividade['titulo'] as String,
+                                  atividade.titulo,
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 16,
@@ -510,7 +499,7 @@ class _AlunoDashboardScreenState extends State<AlunoDashboardScreen> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Entrega: ${atividade['dataEntrega']}',
+                            'Entrega: ${atividade.dataEntrega.toString().split(' ')[0]}',
                             style: const TextStyle(
                               color: AppTheme.mutedForegroundColor,
                               fontSize: 14,
@@ -527,7 +516,7 @@ class _AlunoDashboardScreenState extends State<AlunoDashboardScreen> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
-                              '${atividade['pontuacao']} moedas',
+                              '${atividade.pontuacao} moedas',
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: AppTheme.primaryColor,
@@ -567,130 +556,300 @@ class _AlunoDashboardScreenState extends State<AlunoDashboardScreen> {
             ),
             const SizedBox(height: 8),
 
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 0.55,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 16,
-              ),
-              itemCount: produtosDestaque.length,
-              itemBuilder: (context, index) {
-                final produto = produtosDestaque[index];
-                final temSaldo = coins >= (produto['preco'] as int);
-
-                return Card(
-                  clipBehavior: Clip.antiAlias,
-                  elevation: 2,
-                  margin: const EdgeInsets.only(bottom: 4),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Imagem
-                      AspectRatio(
-                        aspectRatio: 1.5,
-                        child: Container(
-                          width: double.infinity,
-                          color: AppTheme.primaryColor.withOpacity(0.1),
-                          child: const Center(
-                            child: Icon(
-                              Icons.image_outlined,
-                              size: 40,
-                              color: AppTheme.mutedForegroundColor,
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      // Informações
-                      Expanded(
+            _isLoading && _produtosDestaque.isEmpty
+                ? const Center(child: CircularProgressIndicator())
+                : _produtosDestaque.isEmpty
+                    ? const Card(
+                        color: AppTheme.mutedColor,
                         child: Padding(
-                          padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                          padding: EdgeInsets.all(16),
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Text(
-                                produto['nome'] as String,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                              Icon(
+                                Icons.card_giftcard_outlined,
+                                size: 48,
+                                color: AppTheme.mutedForegroundColor,
                               ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        '${produto['preco']} 🪙',
-                                        style: const TextStyle(
-                                          color: AppTheme.primaryColor,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                      Text(
-                                        temSaldo
-                                            ? 'Disponível'
-                                            : 'Faltam ${(produto['preco'] as int) - coins}',
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          color: temSaldo
-                                              ? AppTheme.successColor
-                                              : Colors.orange,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Container(
-                                    height: 32,
-                                    margin: const EdgeInsets.only(bottom: 4),
-                                    child: ElevatedButton(
-                                      onPressed: temSaldo
-                                          ? () {
-                                              // TODO: Implementar troca de produto
-                                            }
-                                          : null,
-                                      style: ElevatedButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 4),
-                                        textStyle:
-                                            const TextStyle(fontSize: 13),
-                                        minimumSize: const Size.fromHeight(32),
-                                      ),
-                                      child: FittedBox(
-                                        fit: BoxFit.scaleDown,
-                                        child: Text(temSaldo
-                                            ? 'Trocar'
-                                            : 'Moedas insuficientes'),
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                              SizedBox(height: 16),
+                              Text(
+                                'Nenhum produto disponível no momento',
+                                style: TextStyle(
+                                    color: AppTheme.mutedForegroundColor),
+                                textAlign: TextAlign.center,
                               ),
                             ],
                           ),
                         ),
+                      )
+                    : GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          childAspectRatio: 0.55,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 16,
+                        ),
+                        itemCount: _produtosDestaque.length,
+                        itemBuilder: (context, index) {
+                          final produto = _produtosDestaque[index];
+                          final temSaldo = coins >= produto.preco;
+
+                          return Card(
+                            clipBehavior: Clip.antiAlias,
+                            elevation: 2,
+                            margin: const EdgeInsets.only(bottom: 4),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Imagem
+                                AspectRatio(
+                                  aspectRatio: 1.5,
+                                  child: Container(
+                                    width: double.infinity,
+                                    color:
+                                        AppTheme.primaryColor.withOpacity(0.1),
+                                    child: produto.imagem != null &&
+                                            produto.imagem!.isNotEmpty
+                                        ? Image.network(
+                                            produto.imagem!,
+                                            fit: BoxFit.cover,
+                                            errorBuilder:
+                                                (context, error, stackTrace) =>
+                                                    const Center(
+                                              child: Icon(
+                                                Icons.card_giftcard,
+                                                size: 40,
+                                                color: AppTheme
+                                                    .mutedForegroundColor,
+                                              ),
+                                            ),
+                                          )
+                                        : const Center(
+                                            child: Icon(
+                                              Icons.card_giftcard,
+                                              size: 40,
+                                              color:
+                                                  AppTheme.mutedForegroundColor,
+                                            ),
+                                          ),
+                                  ),
+                                ),
+
+                                // Informações
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                        10, 8, 10, 10),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              produto.nome,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 14,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              produto.descricao,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey[600],
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
+                                        ),
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.stretch,
+                                          children: [
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    const Icon(
+                                                        Icons.monetization_on,
+                                                        color: AppTheme
+                                                            .primaryColor,
+                                                        size: 16),
+                                                    const SizedBox(width: 2),
+                                                    Text(
+                                                      '${produto.preco}',
+                                                      style: const TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        color: AppTheme
+                                                            .primaryColor,
+                                                        fontSize: 14,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                Text(
+                                                  temSaldo
+                                                      ? 'Disponível'
+                                                      : 'Faltam ${produto.preco - coins}',
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    color: temSaldo
+                                                        ? AppTheme.successColor
+                                                        : Colors.orange,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Container(
+                                              height: 32,
+                                              margin: const EdgeInsets.only(
+                                                  bottom: 4),
+                                              child: ElevatedButton(
+                                                onPressed: temSaldo
+                                                    ? () {
+                                                        _showComprarDialog(
+                                                            context,
+                                                            produto,
+                                                            coins,
+                                                            user?.id);
+                                                      }
+                                                    : null,
+                                                style: ElevatedButton.styleFrom(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(horizontal: 4),
+                                                  textStyle: const TextStyle(
+                                                      fontSize: 13),
+                                                  minimumSize:
+                                                      const Size.fromHeight(32),
+                                                ),
+                                                child: FittedBox(
+                                                  fit: BoxFit.scaleDown,
+                                                  child: Text(temSaldo
+                                                      ? 'Comprar'
+                                                      : 'Moedas insuficientes'),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
                       ),
-                    ],
-                  ),
-                );
-              },
-            ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showComprarDialog(BuildContext context, Produto produto, int moedas,
+      String? alunoId) async {
+    final scaffoldContext = context;
+    final saldoSuficiente = moedas >= produto.preco;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Comprar ${produto.nome}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Preço: ${produto.preco} StairCoins'),
+            const SizedBox(height: 8),
+            Text('Seu saldo: $moedas StairCoins'),
+            if (!saldoSuficiente) ...[
+              const SizedBox(height: 12),
+              const Text(
+                'Saldo insuficiente para realizar esta compra.',
+                style: TextStyle(color: Colors.red),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+            },
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: saldoSuficiente
+                ? () async {
+                    if (alunoId == null) return;
+                    final produtoProvider = Provider.of<ProdutoProvider>(
+                        scaffoldContext,
+                        listen: false);
+                    final authProvider = Provider.of<AuthProvider>(
+                        scaffoldContext,
+                        listen: false);
+
+                    final codigo = await produtoProvider.trocarProduto(
+                      produtoId: produto.id,
+                      alunoId: alunoId,
+                      moedasAluno: moedas,
+                      authProvider: authProvider,
+                    );
+
+                    Navigator.of(ctx).pop();
+
+                    if (codigo == 'MOEDAS_INSUFICIENTES') {
+                      ScaffoldMessenger.of(scaffoldContext).showSnackBar(
+                        const SnackBar(
+                          content: Text('Moedas insuficientes!'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    } else if (codigo != null) {
+                      // Recarregar dados após compra bem-sucedida
+                      _carregarDados();
+
+                      ScaffoldMessenger.of(scaffoldContext).showSnackBar(
+                        SnackBar(
+                          content: Text('Troca realizada! Código: $codigo'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(scaffoldContext).showSnackBar(
+                        const SnackBar(
+                          content: Text('Erro ao realizar troca.'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
+                : null,
+            child: const Text('Confirmar Compra'),
+          ),
+        ],
       ),
     );
   }
@@ -706,7 +865,7 @@ class _AlunoDashboardScreenState extends State<AlunoDashboardScreen> {
                   builder: (_) => DetalheTurmaAlunoScreen(turmaId: turma.id),
                 ),
               )
-              .then((_) => _carregarTurmas());
+              .then((_) => _carregarDados());
         },
         borderRadius: BorderRadius.circular(16),
         child: Padding(

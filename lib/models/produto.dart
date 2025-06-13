@@ -6,6 +6,8 @@ class Produto {
   final int quantidade;
   final String? imagem;
   final String? pesoTamanho;
+  final String? turmaId;
+  final String? professorId;
 
   Produto({
     required this.id,
@@ -15,6 +17,8 @@ class Produto {
     required this.quantidade,
     this.imagem,
     this.pesoTamanho,
+    this.turmaId,
+    this.professorId,
   });
 
   factory Produto.fromJson(Map<String, dynamic> json) {
@@ -26,6 +30,8 @@ class Produto {
       quantidade: json['quantidade'] ?? 0,
       imagem: json['imagem'] is String ? json['imagem'] : null,
       pesoTamanho: json['pesoTamanho'] is String ? json['pesoTamanho'] : null,
+      turmaId: json['turmaId'] is String ? json['turmaId'] : null,
+      professorId: json['professorId'] is String ? json['professorId'] : null,
     );
   }
 
@@ -38,6 +44,8 @@ class Produto {
       'quantidade': quantidade,
       'imagem': imagem,
       'pesoTamanho': pesoTamanho,
+      'turmaId': turmaId,
+      'professorId': professorId,
     };
   }
 
@@ -49,6 +57,8 @@ class Produto {
     int? quantidade,
     String? imagem,
     String? pesoTamanho,
+    String? turmaId,
+    String? professorId,
   }) {
     return Produto(
       id: id ?? this.id,
@@ -58,6 +68,8 @@ class Produto {
       quantidade: quantidade ?? this.quantidade,
       imagem: imagem ?? this.imagem,
       pesoTamanho: pesoTamanho ?? this.pesoTamanho,
+      turmaId: turmaId ?? this.turmaId,
+      professorId: professorId ?? this.professorId,
     );
   }
 }

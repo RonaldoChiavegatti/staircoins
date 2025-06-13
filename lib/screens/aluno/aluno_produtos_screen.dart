@@ -5,6 +5,7 @@ import 'package:staircoins/theme/app_theme.dart';
 import 'package:staircoins/providers/produto_provider.dart';
 import 'package:staircoins/models/produto.dart';
 import 'package:staircoins/screens/aluno/aluno_historico_trocas_screen.dart';
+import 'package:staircoins/providers/turma_provider.dart';
 
 class AlunoProdutosScreen extends StatefulWidget {
   const AlunoProdutosScreen({super.key});
@@ -14,17 +15,114 @@ class AlunoProdutosScreen extends StatefulWidget {
 }
 
 class _AlunoProdutosScreenState extends State<AlunoProdutosScreen> {
+  bool _isLoading = false;
+  List<Produto> _produtosTurmas = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _carregarProdutos();
+  }
+
+  Future<void> _carregarProdutos() async {
+    setState(() {
+      _isLoading = true;
+      _produtosTurmas = []; // Limpar produtos antigos
+    });
+
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final produtoProvider =
+          Provider.of<ProdutoProvider>(context, listen: false);
+      final turmaProvider = Provider.of<TurmaProvider>(context, listen: false);
+
+      if (authProvider.isAuthenticated && authProvider.user != null) {
+        final user = authProvider.user!;
+
+        // Filtrar produtos por turmas, se houver turmas
+        if (user.turmas.isNotEmpty) {
+          // Recarregar todas as turmas para garantir dados atualizados
+          await turmaProvider.buscarTurmasPorIds(user.turmas);
+
+          // Buscar turmas do aluno para obter os IDs dos professores
+          final turmas = turmaProvider.getTurmasAluno();
+          final professoresIds =
+              turmas.map((t) => t.professorId).toSet().toList();
+
+          debugPrint('AlunoProdutosScreen: Turmas do aluno: ${turmas.length}');
+
+          // Log detalhado das turmas
+          for (var turma in turmas) {
+            debugPrint(
+                'AlunoProdutosScreen: Turma: ${turma.id} - ${turma.nome} - Professor: ${turma.professorId}');
+          }
+
+          debugPrint(
+              'AlunoProdutosScreen: Professores das turmas: $professoresIds');
+
+          // Verificar se temos professores
+          if (professoresIds.isEmpty) {
+            debugPrint(
+                'ALERTA: Nenhum professor encontrado para as turmas do aluno!');
+          }
+
+          try {
+            // Primeiro recarregar todos os produtos para garantir dados atualizados
+            await produtoProvider.carregarProdutos();
+
+            debugPrint(
+                'AlunoProdutosScreen: Buscando produtos das turmas do aluno e seus professores');
+
+            final produtosTurma = await produtoProvider.buscarProdutosPorTurmas(
+                user.turmas,
+                professoresIds: professoresIds);
+
+            debugPrint(
+                'AlunoProdutosScreen: Encontrados ${produtosTurma.length} produtos para as turmas do aluno');
+
+            // Log detalhado dos produtos encontrados
+            for (var produto in produtosTurma) {
+              debugPrint(
+                  'AlunoProdutosScreen: Produto: ${produto.nome}, turmaId: ${produto.turmaId}, professorId: ${produto.professorId}');
+            }
+
+            _produtosTurmas = produtosTurma;
+          } catch (e) {
+            debugPrint('AlunoProdutosScreen: Erro ao buscar produtos: $e');
+          }
+        } else {
+          debugPrint('AlunoProdutosScreen: Aluno não está em nenhuma turma');
+          _produtosTurmas = [];
+        }
+      } else {
+        debugPrint('AlunoProdutosScreen: Usuário não autenticado');
+        _produtosTurmas = [];
+      }
+
+      debugPrint(
+          'AlunoProdutosScreen: Total de ${_produtosTurmas.length} produtos disponíveis para exibição');
+    } catch (e) {
+      debugPrint('AlunoProdutosScreen: Erro ao carregar produtos: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final produtoProvider = Provider.of<ProdutoProvider>(context);
-    final produtos =
-        produtoProvider.produtos.where((p) => p.quantidade > 0).toList();
     final user = authProvider.user;
     final moedas = user?.staircoins ?? 0;
-    if (produtoProvider.isLoading) {
+
+    if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
+
     if (produtoProvider.erro != null) {
       return Center(
         child: Column(
@@ -32,14 +130,13 @@ class _AlunoProdutosScreenState extends State<AlunoProdutosScreen> {
           children: [
             const Icon(Icons.error_outline, size: 64, color: Colors.red),
             const SizedBox(height: 16),
-            Text('Erro ao carregar produtos',
-                style:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text('Erro ao carregar produtos',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             Text(produtoProvider.erro!),
             const SizedBox(height: 24),
             ElevatedButton.icon(
-              onPressed: () => produtoProvider.carregarProdutos(),
+              onPressed: _carregarProdutos,
               icon: const Icon(Icons.refresh),
               label: const Text('Tentar novamente'),
             ),
@@ -47,9 +144,10 @@ class _AlunoProdutosScreenState extends State<AlunoProdutosScreen> {
         ),
       );
     }
+
     return Stack(
       children: [
-        produtos.isEmpty
+        _produtosTurmas.isEmpty
             ? Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -65,7 +163,7 @@ class _AlunoProdutosScreenState extends State<AlunoProdutosScreen> {
                         style: TextStyle(color: AppTheme.mutedForegroundColor)),
                     const SizedBox(height: 24),
                     ElevatedButton.icon(
-                      onPressed: () => produtoProvider.carregarProdutos(),
+                      onPressed: _carregarProdutos,
                       icon: const Icon(Icons.refresh),
                       label: const Text('Atualizar'),
                     ),
@@ -125,9 +223,9 @@ class _AlunoProdutosScreenState extends State<AlunoProdutosScreen> {
                           mainAxisSpacing: 16,
                           childAspectRatio: 0.55,
                         ),
-                        itemCount: produtos.length,
+                        itemCount: _produtosTurmas.length,
                         itemBuilder: (context, index) {
-                          final produto = produtos[index];
+                          final produto = _produtosTurmas[index];
                           return _buildProdutoCard(
                               context, produto, moedas, user?.id);
                         },

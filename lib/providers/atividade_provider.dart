@@ -10,50 +10,6 @@ class AtividadeProvider with ChangeNotifier {
   List<Atividade> get atividades => _atividades;
   bool get isLoading => _isLoading;
 
-  // Dados mockados para simulação
-  final List<Map<String, dynamic>> _mockAtividades = [
-    {
-      'id': '1',
-      'titulo': 'Trabalho de Matemática',
-      'descricao':
-          'Resolver os exercícios das páginas 45-48 do livro de matemática. Mostrar todos os cálculos e justificar as respostas.',
-      'dataEntrega': '2023-05-15T00:00:00.000',
-      'pontuacao': 50,
-      'status': 'pendente',
-      'turmaId': '1',
-    },
-    {
-      'id': '2',
-      'titulo': 'Redação sobre Meio Ambiente',
-      'descricao':
-          'Escrever uma redação de 20-30 linhas sobre a importância da preservação do meio ambiente, citando exemplos práticos de como podemos contribuir no dia a dia.',
-      'dataEntrega': '2023-05-20T00:00:00.000',
-      'pontuacao': 30,
-      'status': 'pendente',
-      'turmaId': '1',
-    },
-    {
-      'id': '3',
-      'titulo': 'Questionário de História',
-      'descricao':
-          'Responder ao questionário sobre a Revolução Industrial. Pesquisar em fontes confiáveis e citar as referências utilizadas.',
-      'dataEntrega': '2023-05-10T00:00:00.000',
-      'pontuacao': 20,
-      'status': 'entregue',
-      'turmaId': '2',
-    },
-    {
-      'id': '4',
-      'titulo': 'Apresentação de Ciências',
-      'descricao':
-          'Preparar uma apresentação sobre o sistema solar. Incluir informações sobre todos os planetas e pelo menos 3 curiosidades sobre o espaço.',
-      'dataEntrega': '2023-04-30T00:00:00.000',
-      'pontuacao': 40,
-      'status': 'atrasado',
-      'turmaId': '1',
-    },
-  ];
-
   AtividadeProvider() {
     _loadAtividades();
   }
@@ -63,10 +19,13 @@ class AtividadeProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // Simulando delay de rede
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      _atividades = _mockAtividades.map((a) => Atividade.fromJson(a)).toList();
+      final snapshot =
+          await FirebaseFirestore.instance.collection('atividades').get();
+      _atividades = snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return Atividade.fromJson(data);
+      }).toList();
     } catch (e) {
       debugPrint('Erro ao carregar atividades: $e');
     } finally {
@@ -126,21 +85,20 @@ class AtividadeProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // Simulando delay de rede
-      await Future.delayed(const Duration(seconds: 1));
+      final docRef =
+          FirebaseFirestore.instance.collection('atividades').doc(atividadeId);
+      await docRef.update({
+        'status': AtividadeStatus.entregue.toString(),
+      });
 
       final index = _atividades.indexWhere((a) => a.id == atividadeId);
-      if (index == -1) {
-        throw Exception('Atividade não encontrada');
+      if (index != -1) {
+        final atividade = _atividades[index];
+        final updatedAtividade = atividade.copyWith(
+          status: AtividadeStatus.entregue,
+        );
+        _atividades[index] = updatedAtividade;
       }
-
-      final atividade = _atividades[index];
-      final updatedAtividade = atividade.copyWith(
-        status: AtividadeStatus.entregue,
-      );
-
-      _atividades[index] = updatedAtividade;
-      _mockAtividades[index] = updatedAtividade.toJson();
 
       notifyListeners();
     } catch (e) {
@@ -158,9 +116,6 @@ class AtividadeProvider with ChangeNotifier {
     _isLoading = false;
     notifyListeners();
     debugPrint('AtividadeProvider: Dados limpos com sucesso');
-
-    // Recarregar as atividades após limpar
-    _loadAtividades();
   }
 
   Future<void> fetchAtividadesByTurma(String turmaId) async {

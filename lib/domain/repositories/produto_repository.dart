@@ -8,6 +8,9 @@ abstract class ProdutoRepository {
   Future<Either<Exception, void>> adicionarProduto(Produto produto);
   Future<Either<Exception, void>> editarProduto(Produto produto);
   Future<Either<Exception, void>> removerProduto(String id);
+  Future<Either<Exception, List<Produto>>> getProdutosPorTurmas(
+      List<String> turmasIds,
+      {List<String> professoresIds = const []});
 
   // Troca de produtos
   Future<Either<Exception, String>> trocarProduto({
