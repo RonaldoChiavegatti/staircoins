@@ -81,9 +81,9 @@ class MyApp extends StatelessWidget {
         ),
       ],
       child: MaterialApp(
-        title: 'StairCoins',
+        title: 'StarCoins',
         theme: AppTheme.lightTheme,
-        home: const LoginScreenWithSeed(),
+        home: const LoginScreen(),
         debugShowCheckedModeBanner: false,
       ),
     );

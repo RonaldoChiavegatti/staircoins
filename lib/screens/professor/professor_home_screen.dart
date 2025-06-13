@@ -71,7 +71,7 @@ class _ProfessorHomeScreenState extends State<ProfessorHomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('StairCoins'),
+        title: const Text('StarCoins'),
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_outlined),

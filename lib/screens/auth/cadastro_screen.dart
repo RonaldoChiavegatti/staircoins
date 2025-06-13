@@ -102,7 +102,7 @@ class _CadastroScreenState extends State<CadastroScreen> {
                 ),
                 const SizedBox(height: 24),
                 const Text(
-                  'StairCoins',
+                  'StarCoins',
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,

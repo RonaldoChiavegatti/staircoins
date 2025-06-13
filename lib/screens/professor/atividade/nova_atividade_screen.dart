@@ -128,7 +128,7 @@ class _NovaAtividadeScreenState extends State<NovaAtividadeScreen> {
               TextFormField(
                 controller: _pontuacaoController,
                 decoration: InputDecoration(
-                  labelText: 'Pontuação (StairCoins)',
+                  labelText: 'Pontuação (StarCoins)',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),

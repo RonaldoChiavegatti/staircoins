@@ -613,7 +613,7 @@ class _DetalheTurmaScreenState extends State<DetalheTurmaScreen>
 
   void _compartilharTurma(Turma turma) {
     final texto =
-        'Entre na minha turma "${turma.nome}" no StairCoins usando o código: ${turma.codigo}';
+        'Entre na minha turma "${turma.nome}" no StarCoins usando o código: ${turma.codigo}';
     Share.share(texto);
   }
 

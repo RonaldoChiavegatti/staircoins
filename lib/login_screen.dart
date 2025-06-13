@@ -154,7 +154,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 8),
                         const Text(
-                          'Faça login para acessar o StairCoins',
+                          'Faça login para acessar o StarCoins',
                           style: TextStyle(
                             color: Colors.grey,
                           ),
